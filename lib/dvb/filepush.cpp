@@ -64,7 +64,6 @@ void eFilePushThread::thread()
 	size_t bytes_read = 0;
 	off_t current_span_offset = 0;
 	size_t current_span_remaining = 0;
-
 #if defined(__sh__)
 // opens video device for the reverse playback workaround
 // Changes in this file are cause e2 doesnt tell the player to play reverse
@@ -77,7 +76,7 @@ void eFilePushThread::thread()
 	{
 		if (m_sg && !current_span_remaining)
 		{
-#if defined (__sh__) // tells the player to play in reverse
+#if defined(__sh__) // tells the player to play in reverse
 #define VIDEO_DISCONTINUITY                   _IO('o', 84)
 #define DVB_DISCONTINUITY_SKIP                0x01
 #define DVB_DISCONTINUITY_CONTINUOUS_REVERSE  0x02

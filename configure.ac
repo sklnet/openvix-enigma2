@@ -175,20 +175,19 @@ if test x"$withosdanimation" != xno ; then
 fi
 AM_CONDITIONAL(HAVE_OSDANIMATION, test x"$withosdanimation" != xno)
 
+AC_ARG_WITH(libeplayer3,
+	AS_HELP_STRING([--with-libeplayer3],[use libeplayer3 as player engine support, yes or no]),
+	[with_libeplayer3=$withval],[with_libeplayer3=no])
+if test "$with_libeplayer3" = "yes"; then
+	PKG_CHECK_MODULES(LIBXINE, libeplayer3)
+	AC_DEFINE([HAVE_LIBEPLAYER3],[1],[Define to 1 if you have libeplayer3])
+fi
+AM_CONDITIONAL(HAVE_LIBEPLAYER3, test "$with_libeplayer3" = "yes")
 
 if test `echo "$BOXTYPE" | cut -b 1-2` == "dm"; then
 	AC_DEFINE(DREAMBOX, 1, [Dreambox hardware])
 	AC_DEFINE(KEY_PLAY_ACTUALLY_IS_KEY_PLAYPAUSE, 1,[define when rc sends a KEY_PLAY event for its KEY_PLAYPAUSE key])
 fi
-
-AC_ARG_ENABLE([sh],
-	[AS_HELP_STRING(--enable-sh,    enable sh patches)],
-	[case "${enableval}" in
-		yes) enable_sh=true ;;
-		no) enable_sh=false ;;
-		*) AC_MSG_ERROR([bad value ${enableval} for --enable-sh]) ;;
-	esac])
-AM_CONDITIONAL([ENABLE_SH], [test x$enable_sh = xtrue])
 
 AC_ARG_WITH(nolcd,
 	AC_HELP_STRING([--with-nolcd], [disable ascii based lcd, yes or no]),

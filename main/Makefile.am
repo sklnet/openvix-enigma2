@@ -44,6 +44,11 @@ enigma2_LDADD = \
 	@LIBDDVD_LIBS@ \
 	-ltuxtxt -ltuxtxt32bpp -lcrypt -lrt -ldl
 
+if HAVE_LIBEPLAYER3
+enigma2_LDADD += \
+       -leplayer3
+endif
+
 enigma2_LDFLAGS = -Wl,--export-dynamic
 
 if HAVE_GIT_DIR

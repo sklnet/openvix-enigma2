@@ -41,9 +41,11 @@ public:
 #else
 public:
 	unsigned char *lfb;
+#if not defined(__sh__)
 	void enableManualBlit();
 	void disableManualBlit();
 	int showConsole(int state);
+#endif
 	int SetMode(int xRes, int yRes, int bpp);
 	void getMode(int &xres, int &yres, int &bpp);
 	int Available() { return available; }
@@ -65,6 +67,18 @@ public:
 	int PutCMAP();
 #endif
 	static fbClass *getInstance();
+#ifdef HAVE_LIBEPLAYER3
+//     "hack" for libeplayer3 fb access
+       int getFD() { return fbFd; }
+       unsigned char * getLFB_Direct() { return lfb; }
+       int getScreenResX() { return xRes; }
+       int getScreenResY() { return yRes; }
+#endif
+#if defined(__sh__)
+	void clearFBblit();
+	int getFBdiff(int ret);
+	void setFBdiff(int top, int right, int left, int bottom);
+#endif
 
 	int lock();
 	void unlock();

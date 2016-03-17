@@ -227,19 +227,13 @@ void gFBDC::setResolution(int xres, int yres, int bpp)
 	 * we need that to read the new screen dimesnions after a resolution change
 	 * without changing the frambuffer dimensions
 	 */
-	int m_xres;
-	int m_yres;
-	int m_bpp;
-	fb->getMode(m_xres, m_yres, m_bpp);
-
 	if (xres<0 && yres<0 ) {
-		fb->SetMode(m_xres, m_yres, bpp);
+		fb->SetMode(surface.x, surface.y, bpp);
 		return;
 	}
-#else
+#endif
 	if (m_pixmap && (surface.x == xres) && (surface.y == yres) && (surface.bpp == bpp))
 		return;
-#endif
 
 	if (gAccel::getInstance())
 		gAccel::getInstance()->releaseAccelMemorySpace();
@@ -247,10 +241,8 @@ void gFBDC::setResolution(int xres, int yres, int bpp)
 	fb->SetMode(xres, yres, bpp);
 
 #if defined(__sh__)
-
-	for (int y = 0; y<yres; y++) { // make whole screen transparent
+	for (int y = 0; y<yres; y++) // make whole screen transparent
 		memset(fb->lfb+y*fb->Stride(), 0x00, fb->Stride());
-	}
 #endif
 	surface.x = xres;
 	surface.y = yres;

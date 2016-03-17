@@ -73,7 +73,7 @@ gAccel::gAccel():
 #ifdef STMFB_ACCEL
 	stmfb_accel_init();
 #endif
-#ifdef ATI_ACCEL	
+#ifdef ATI_ACCEL
 	ati_accel_init();
 #endif
 #ifdef BCM_ACCEL
@@ -170,13 +170,6 @@ bool gAccel::hasAlphaBlendingSupport()
 int gAccel::blit(gUnmanagedSurface *dst, gUnmanagedSurface *src, const eRect &p, const eRect &area, int flags)
 {
 #ifdef STMFB_ACCEL
-	//eDebug( "src: %4d %4d %4d %4d\tdst: %4d %4d %4d %4d\n"
-	//		"area: %4d %4d %4d %4d\tp: %4d %4d %4d %4d\n",
-	//		src->data_phys, src->x, src->y, src->stride,
-	//		dst->data_phys, dst->x, dst->y, dst->stride, 
-	//		area.left(), area.top(), area.width(), area.height(),
-	//		p.x(), p.y(), p.width(), p.height());
-
 	int src_format = 0;
 	gUnmanagedSurface *surfaceTmp = new gUnmanagedSurface(area.width(), area.height(), dst->bpp);
 
@@ -188,23 +181,23 @@ int gAccel::blit(gUnmanagedSurface *dst, gUnmanagedSurface *src, const eRect &p,
 		if (accelAlloc(surfaceTmp))
 			return -1;
 
-		__u8 *srcptr=(__u8*)src->data;
-		__u8 *dstptr=(__u8*)surfaceTmp->data;
+		__u8 *srcptr = (__u8*)src->data;
+		__u8 *dstptr = (__u8*)surfaceTmp->data;
 		__u32 pal[256];
 
-		for (int i=0; i<256; ++i)
+		for (int i = 0; i < 256; ++i)
 		{
-			if (src->clut.data && (i<src->clut.colors))
-				pal[i]=(src->clut.data[i].a<<24)|(src->clut.data[i].r<<16)|(src->clut.data[i].g<<8)|(src->clut.data[i].b);
+			if (src->clut.data && (i < src->clut.colors))
+				pal[i] = (src->clut.data[i].a<<24)|(src->clut.data[i].r<<16)|(src->clut.data[i].g<<8)|(src->clut.data[i].b);
 			else
-				pal[i]=0x010101*i;
+				pal[i] = 0x010101*i;
 			if ((pal[i]&0xFF000000) >= 0xE0000000)
 				pal[i] = 0xFF000000;
-			pal[i]^=0xFF000000;
+			pal[i] ^= 0xFF000000;
 		}
 		srcptr+=area.left()*src->bypp+area.top()*src->stride;
 
-		for (int y=0; y<area.height(); y++)
+		for (int y = 0; y < area.height(); y++)
 		{
 			int width=area.width();
 			unsigned char *psrc=(unsigned char*)srcptr;
