@@ -64,10 +64,10 @@ class AVSwitch:
 	modes["Scart"] = ["PAL", "NTSC", "Multi"]
 	# modes["DVI-PC"] = ["PC"]
 
-	if about.getChipSetString() in ('7366', '7376', '5272s'):
+	if about.getChipSetString() in ('5272s', '7251s', '7252', '7366', '7376'):
 		modes["HDMI"] = ["720p", "1080p", "2160p", "1080i", "576p", "576i", "480p", "480i"]
 		widescreen_modes = {"720p", "1080p", "2160p", "1080i"}
-	elif about.getChipSetString() in ('7358', '7356', '7362', '7424', '7425', '7241', '7552', '7111', '7162'):
+	elif about.getChipSetString() in ('7241', '7356', '7358', '7362', '73625', '7424', '7425', '7552', '7111', '7162'):
 		modes["HDMI"] = ["720p", "1080p", "1080i", "576p", "576i", "480p", "480i"]
 		widescreen_modes = {"720p", "1080p", "1080i"}
 	else:
@@ -83,16 +83,16 @@ class AVSwitch:
 	# 	del modes["DVI-PC"]
 	
 	# Machines that do not have component video (red, green and blue RCA sockets).
-	if modes.has_key("YPbPr") and getBoxType() in ('dm500hdv2','dm500hd','dm800','e3hd','ebox7358','eboxlumi','ebox5100','enfinity','et4x00','iqonios300hd','ixusszero','odimm7','optimussos1','tm2t','tmnano','tmnano2super','tmnano3t','tmnanose','tmnanosecombo','tmsingle','optimussos1','uniboxhd1','vusolo2','vusolo4k','xp1000'):
+	if modes.has_key("YPbPr") and getBoxType() in ('dm500hdv2','dm500hd','dm800','e3hd','ebox7358','eboxlumi','ebox5100','enfinity','et4x00','iqonios300hd','ixusszero','mbmicro','mbtwinplus','mutant51','odimm7','optimussos1','osmini','osminiplus','tm2t','tmnano','tmnano2super','tmnano3t','tmnanose','tmnanosecombo','tmnanoseplus','tmnanosem2','tmnanosem2plus','tmsingle','optimussos1','uniboxhd1','vusolo2','vusolo4k','xp1000'):
 		del modes["YPbPr"]
 		
 	# Machines that have composite video (yellow RCA socket) but do not have Scart.
-	if modes.has_key("Scart") and getBoxType() in ('gb800ueplus','tmnano','tmnano2super','tmnano3t','tmnanosecombo','xpeedlx3'):
+	if modes.has_key("Scart") and getBoxType() in ('gb800ueplus','mbmicro','mbtwinplus','osmini','osminiplus','tmnano','tmnanose','tmnanosecombo','tmnanoseplus','tmnanosem2','tmnanosem2plus','tmnano2super','tmnano3t','xpeedlx3'):
 		modes["RCA"] = modes["Scart"]
 		del modes["Scart"]
 		
 	# Machines that have neither RCA nor Scart sockets 
-	if modes.has_key("Scart") and getBoxType() in ('et5x00','et6x00','gbquad','ixussone','tmnano2t','tmnanose','vusolo4k'):
+	if modes.has_key("Scart") and getBoxType() in ('et5x00','et6x00','gbquad','ixussone','tmnano2t','vusolo4k','mutant51'):
 		del modes["Scart"]
 
 	def __init__(self):
@@ -498,12 +498,64 @@ def InitAVSwitch():
 			except:
 				pass
 		config.av.hdmicolorspace = ConfigSelection(choices={
-				"Edid(Auto)": _("Auto"),
+				"Edid(auto)": _("Auto"),
 				"Hdmi_Rgb": _("RGB")},
-				default = "Edid(Auto)")
+				default = "Edid(auto)")
 		config.av.hdmicolorspace.addNotifier(setHDMIColorspace)
 	else:
 		config.av.hdmicolorspace = ConfigNothing()
+
+	if os.path.exists("/proc/stb/video/hdmi_colorimetry"):
+		f = open("/proc/stb/video/hdmi_colorimetry", "r")
+		have_colorimetry = f.read().strip().split(" ")
+		f.close()
+	else:
+		have_colorimetry = False
+
+	SystemInfo["havecolorimetry"] = have_colorimetry
+
+	if have_colorimetry:
+		def setHDMIColorimetry(configElement):
+			try:
+				f = open("/proc/stb/video/hdmi_colorimetry", "w")
+				f.write(configElement.value)
+				f.close()
+			except:
+				pass
+		config.av.hdmicolorimetry = ConfigSelection(choices={
+				"Auto": _("Auto"),
+				"bt2020ncl": _("BT 2020 NCL"),
+				"bt2020cl": _("BT 2020 CL"),
+				"bt709": _("BT 709")},
+				default = "Auto")
+		config.av.hdmicolorimetry.addNotifier(setHDMIColorimetry)
+	else:
+		config.av.hdmicolorimetry = ConfigNothing()
+
+	if os.path.exists("/proc/stb/hdmi/audio_source"):
+		f = open("/proc/stb/hdmi/audio_source", "r")
+		can_audiosource = f.read().strip().split(" ")
+		f.close()
+	else:
+		can_audiosource = False
+
+	SystemInfo["Canaudiosource"] = can_audiosource
+
+	if can_audiosource:
+		def setAudioSource(configElement):
+			try:
+				f = open("/proc/stb/hdmi/audio_source", "w")
+				f.write(configElement.value)
+				f.close()
+			except:
+				pass
+		config.av.audio_source = ConfigSelection(choices={
+				"pcm": _("PCM"),
+				"spdif": _("SPDIF")},
+				default="pcm")
+		config.av.audio_source.addNotifier(setAudioSource)
+	else:
+		config.av.audio_source = ConfigNothing()
 
 	if os.path.exists("/proc/stb/audio/3d_surround_choices"):
 		f = open("/proc/stb/audio/3d_surround_choices", "r")

@@ -4,6 +4,8 @@ from Components.GUIComponent import GUIComponent
 from Screens.Screen import Screen
 from Components.ActionMap import ActionMap
 from Components.Label import Label
+from Components.config import config
+from Components.Sources.StaticText import StaticText
 from ServiceReference import ServiceReference
 from enigma import eListboxPythonMultiContent, eListbox, gFont, iServiceInformation, eServiceCenter, getDesktop, RT_HALIGN_LEFT, RT_VALIGN_CENTER
 from Tools.Transponder import ConvertToHumanReadable, getChannelNumber, supportedChannels
@@ -17,6 +19,9 @@ TYPE_VALUE_DEC = 2
 TYPE_VALUE_HEX_DEC = 3
 TYPE_SLIDER = 4
 TYPE_VALUE_ORBIT_DEC = 5
+TYPE_VALUE_FREQ = 6
+TYPE_VALUE_FREQ_FLOAT = 7
+TYPE_VALUE_BITRATE = 8
 
 def to_unsigned(x):
 	return x & 0xFFFFFFFF
@@ -26,8 +31,12 @@ def ServiceInfoListEntry(a, b, valueType=TYPE_TEXT, param=4):
 	if not isinstance(b, str):
 		if valueType == TYPE_VALUE_HEX:
 			b = ("0x%0" + str(param) + "x") % to_unsigned(b)
-		elif valueType == TYPE_VALUE_DEC:
-			b = str(b)
+		elif valueType == TYPE_VALUE_FREQ:
+			b = "%s MHz" % (b / 1000)
+		elif valueType == TYPE_VALUE_FREQ_FLOAT:
+			b = "%s.%s MHz" % (b / 1000, b % 1000)
+		elif valueType == TYPE_VALUE_BITRATE:
+			b = "%s" % (b / 1000)
 		elif valueType == TYPE_VALUE_HEX_DEC:
 			b = ("0x%0" + str(param) + "x (%dd)") % (to_unsigned(b), b)
 		elif valueType == TYPE_VALUE_ORBIT_DEC:
@@ -91,7 +100,7 @@ TYPE_SERVICE_INFO = 1
 TYPE_TRANSPONDER_INFO = 2
 
 class ServiceInfo(Screen):
-	def __init__(self, session, serviceref=None):
+	def __init__(self, session, menu_path="", serviceref=None):
 		Screen.__init__(self, session)
 
 		self["actions"] = ActionMap(["OkCancelActions", "ColorActions"],
@@ -105,7 +114,7 @@ class ServiceInfo(Screen):
 		}, -1)
 
 		if serviceref:
-			Screen.setTitle(self, _("Transponder Information"))
+			screentitle = _("Transponder Information")
 			self.type = TYPE_TRANSPONDER_INFO
 			self.skinName="ServiceInfoSimple"
 			info = eServiceCenter.getInstance().info(serviceref)
@@ -114,7 +123,7 @@ class ServiceInfo(Screen):
 			self.info = None
 			self.feinfo = None
 		else:
-			Screen.setTitle(self, _("Service Information"))
+			screentitle = _("Service Information")
 			self.type = TYPE_SERVICE_INFO
 			self["key_red"] = self["red"] = Label(_("Service"))
 			self["key_green"] = self["green"] = Label(_("PIDs"))
@@ -128,6 +137,17 @@ class ServiceInfo(Screen):
 				self.info = None
 				self.feinfo = None
 
+		if config.usage.show_menupath.value == 'large':
+			menu_path += screentitle
+			title = menu_path
+			self["menu_path_compressed"] = StaticText("")
+		elif config.usage.show_menupath.value == 'small':
+			title = screentitle
+			self["menu_path_compressed"] = StaticText(menu_path + " >" if not menu_path.endswith(' / ') else menu_path[:-3] + " >" or "")
+		else:
+			title = screentitle
+			self["menu_path_compressed"] = StaticText("")
+		Screen.setTitle(self, title)
 		tlist = [ ]
 
 		self["infolist"] = ServiceInfoList(tlist)
@@ -261,8 +281,8 @@ class ServiceInfo(Screen):
 						(_("System"), frontendData["system"], TYPE_TEXT),
 						(_("Modulation"), frontendData["modulation"], TYPE_TEXT),
 						(_("Orbital position"), frontendData["orbital_position"], TYPE_VALUE_DEC),
-						(_("Frequency"), frontendData["frequency"], TYPE_VALUE_DEC),
-						(_("Symbol rate"), frontendData["symbol_rate"], TYPE_VALUE_DEC),
+						(_("Frequency"), frontendData["frequency"], TYPE_VALUE_FREQ),
+						(_("Symbol rate"), frontendData["symbol_rate"], TYPE_VALUE_BITRATE),
 						(_("Polarization"), frontendData["polarization"], TYPE_TEXT),
 						(_("Inversion"), frontendData["inversion"], TYPE_TEXT),
 						(_("FEC"), frontendData["fec_inner"], TYPE_TEXT),
@@ -272,15 +292,15 @@ class ServiceInfo(Screen):
 				return ((_("NIM"), chr(ord('A')+int(frontendData["tuner_number"])), TYPE_TEXT),
 						(_("Type"), frontendData["tuner_type"], TYPE_TEXT),
 						(_("Modulation"), frontendData["modulation"], TYPE_TEXT),
-						(_("Frequency"), frontendData["frequency"], TYPE_VALUE_DEC),
-						(_("Symbol rate"), frontendData["symbol_rate"], TYPE_VALUE_DEC),
+						(_("Frequency"), frontendData["frequency"], TYPE_VALUE_FREQ_FLOAT),
+						(_("Symbol rate"), frontendData["symbol_rate"], TYPE_VALUE_BITRATE),
 						(_("Inversion"), frontendData["inversion"], TYPE_TEXT),
 						(_("FEC"), frontendData["fec_inner"], TYPE_TEXT))
 			elif frontendDataOrg["tuner_type"] == "DVB-T":
 				channel = getChannelNumber(frontendDataOrg["frequency"], frontendDataOrg["tuner_number"]) if supportedChannels(frontendDataOrg["tuner_number"]) else None
 				return ((_("NIM"), chr(ord('A')+int(frontendData["tuner_number"])), TYPE_TEXT),
 						(_("Type"), frontendData["tuner_type"], TYPE_TEXT),
-						(_("Frequency"), frontendData["frequency"], TYPE_VALUE_DEC),
+						(_("Frequency"), frontendData["frequency"], TYPE_VALUE_FREQ_FLOAT),
 						(_("Channel"), getChannelNumber(frontendData["frequency"], frontendData["tuner_number"]), TYPE_VALUE_DEC),
 						(_("Inversion"), frontendData["inversion"], TYPE_TEXT),
 						(_("Bandwidth"), frontendData["bandwidth"], TYPE_VALUE_DEC),
@@ -290,6 +310,13 @@ class ServiceInfo(Screen):
 						(_("Transmission mode"), frontendData["transmission_mode"], TYPE_TEXT),
 						(_("Guard interval"), frontendData["guard_interval"], TYPE_TEXT),
 						(_("Hierarchy info"), frontendData["hierarchy_information"], TYPE_TEXT))
+			elif frontendDataOrg["tuner_type"] == "ATSC":
+				return ((_("NIM"), chr(ord('A') + frontendData["tuner_number"]), TYPE_TEXT),
+						(_("Type"), frontendData["tuner_type"], TYPE_TEXT),
+						(_("System"), frontendData["system"], TYPE_TEXT),
+						(_("Modulation"), frontendData["modulation"], TYPE_TEXT),
+						(_("Frequency"), frontendData["frequency"], TYPE_VALUE_FREQ_FLOAT),
+						(_("Inversion"), frontendData["inversion"], TYPE_TEXT))
 		return [ ]
 
 	def fillList(self, Labels):

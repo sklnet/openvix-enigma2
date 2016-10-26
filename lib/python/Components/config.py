@@ -99,9 +99,11 @@ class ConfigElement(object):
 
 	def isChanged(self):
 		sv = self.saved_value
-		if sv is None and self.value == self.default:
+		if sv is None and str(self.value) == str(self.default):
 			return False
-		return self.tostring(self.value) != sv
+		elif sv is None and self.tostring(self.value) != self.tostring(self.default):
+			return self.tostring(self.value) != self.tostring(self.default)
+		return self.tostring(self.value) != self.tostring(sv)
 
 	def changed(self):
 		if self.__notifiers:
@@ -330,7 +332,7 @@ class ConfigSelection(ConfigElement):
 		self.changed()
 
 	def tostring(self, val):
-		return val
+		return str(val)
 
 	def getValue(self):
 		return self._value
@@ -435,13 +437,13 @@ class ConfigBoolean(ConfigElement):
 		return "text", descr
 
 	def tostring(self, value):
-		if not value:
-			return "false"
+		if not value or str(value).lower() == 'false':
+			return "False"
 		else:
-			return "true"
+			return "True"
 
 	def fromstring(self, val):
-		if val == "true":
+		if str(val).lower() == "true":
 			return True
 		else:
 			return False
@@ -656,13 +658,16 @@ class ConfigSequence(ConfigElement):
 			return "text", value
 
 	def tostring(self, val):
-		return self.seperator.join([self.saveSingle(x) for x in val])
+		if val:
+			return self.seperator.join([self.saveSingle(x) for x in val])
+		return None
 
 	def saveSingle(self, v):
 		return str(v)
 
 	def fromstring(self, value):
-		return [int(x) for x in value.split(self.seperator)]
+		ret = [int(x) for x in value.split(self.seperator)]
+		return ret + [int(x[0]) for x in self.limits[len(ret):]]
 
 	def onDeselect(self, session):
 		if self.last_value != self._value:
@@ -729,11 +734,12 @@ class ConfigIP(ConfigSequence):
 	def genText(self):
 		value = ""
 		block_strlen = []
-		for i in self._value:
-			block_strlen.append(len(str(i)))
-			if value:
-				value += self.seperator
-			value += str(i)
+		if self._value:
+			for i in self._value:
+				block_strlen.append(len(str(i)))
+				if value:
+					value += self.seperator
+				value += str(i)
 		leftPos = sum(block_strlen[:self.marked_block])+self.marked_block
 		rightPos = sum(block_strlen[:(self.marked_block+1)])+self.marked_block
 		mBlock = range(leftPos, rightPos)
@@ -967,6 +973,15 @@ class ConfigFloat(ConfigSequence):
 		return float(self.value[1] / float(self.limits[1][1] + 1) + self.value[0])
 
 	float = property(getFloat)
+
+	def getFloatInt(self):
+		return int(self.value[0] * float(self.limits[1][1] + 1) + self.value[1])
+
+	def setFloatInt(self, val):
+		self.value[0] = val / float(self.limits[1][1] + 1)
+		self.value[1] = val % float(self.limits[1][1] + 1)
+
+	floatint = property(getFloatInt, setFloatInt)
 
 # an editable text...
 class ConfigText(ConfigElement, NumericalTextInput):
@@ -1251,9 +1266,9 @@ class ConfigNumber(ConfigText):
 	def isChanged(self):
 		sv = self.saved_value
 		strv = self.tostring(self.value)
-		if sv is None and strv == self.default:
+		if sv is None and strv == str(self.default):
 			return False
-		return strv != sv
+		return strv != self.tostring(sv)
 
 	def conform(self):
 		pos = len(self.text) - self.marked_pos

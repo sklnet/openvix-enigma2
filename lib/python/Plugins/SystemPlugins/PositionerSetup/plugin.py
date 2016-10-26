@@ -29,6 +29,15 @@ from threading import Event as Event
 import log
 import rotor_calc
 
+frequency_label = _('Frequency:')
+polarisation_label = _('Polarisation:')
+symbolrate_label = _('Symbolrate:')
+fec_label = _('FEC:')
+snr_label = _('SNR:')
+ber_label = _('BER:')
+lock_label = _('Lock:')
+agc_label = _("AGC:")
+
 class PositionerSetup(Screen):
 
 	@staticmethod
@@ -103,7 +112,7 @@ class PositionerSetup(Screen):
 			del feInfo
 			del service
 			if self.oldref and getCurrentTuner is not None:
-				if getCurrentTuner < 4 and self.feid == getCurrentTuner:
+				if self.feid == getCurrentTuner:
 					self.oldref_stop = True
 				if self.oldref_stop:
 					self.session.nav.stopService() # try to disable foreground service
@@ -122,7 +131,7 @@ class PositionerSetup(Screen):
 						frontendData = feInfo.getAll(True)
 						getCurrentTuner = frontendData and frontendData.get("tuner_number", None)
 						getCurrentSat = cur_pip_info.get('orbital_position', None)
-						if getCurrentTuner is not None and getCurrentTuner < 4 and self.feid == getCurrentTuner:
+						if getCurrentTuner is not None and self.feid == getCurrentTuner:
 							if getCurrentSat is not None and getCurrentSat in self.availablesats:
 								cur = cur_pip_info
 							else:
@@ -685,16 +694,17 @@ class PositionerSetup(Screen):
 						for sat in self.availablesats:
 							usals = self.advancedsats[sat].usals.value
 							if not usals:
-								self.allocatedIndices.append(int(self.advancedsats[sat].rotorposition.value))
+								current_index = int(self.advancedsats[sat].rotorposition.value)
+								if current_index not in self.allocatedIndices:
+									self.allocatedIndices.append(current_index)
 						if len(self.allocatedIndices) == self.rotorPositions:
 							self.statusMsg(_("No free index available"), timeout = self.STATUS_MSG_TIMEOUT)
 							break
 					index = 1
-					if len(self.allocatedIndices):
-						for i in sorted(self.allocatedIndices):
-							if i != index:
-								break
-							index += 1
+					for i in sorted(self.allocatedIndices):
+						if i != index:
+							break
+						index += 1
 					if index <= self.rotorPositions:
 						self.positioner_storage.value = index
 						self["list"].invalidateCurrent()

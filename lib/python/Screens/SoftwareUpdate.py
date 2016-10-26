@@ -1,8 +1,6 @@
-from boxbranding import getImageVersion, getImageBuild, getImageDistro, getImageType, getMachineBrand, getMachineName, getMachineBuild
-from os import rename, path, remove
+from boxbranding import getImageVersion, getImageBuild, getImageDevBuild, getImageType, getImageDistro, getMachineBrand, getMachineName, getMachineBuild
+from os import path
 from gettext import dgettext
-import urllib
-import socket
 
 from enigma import eTimer, eDVBDB
 
@@ -17,6 +15,7 @@ from Components.ActionMap import ActionMap
 from Components.Button import Button
 from Components.config import config
 from Components.Console import Console
+from Components.GitLog import gitlog
 from Components.Ipkg import IpkgComponent
 from Components.Pixmap import Pixmap
 from Components.Label import Label
@@ -26,15 +25,14 @@ from Components.Slider import Slider
 
 ocram = ''
 
+
 class SoftwareUpdateChanges(Screen):
-	def __init__(self, session, args = None):
+	def __init__(self, session, menu_path=""):
 		Screen.__init__(self, session)
-		self.setTitle(_("OE Changes"))
-		if path.exists('/tmp/oe-git.log'):
-			remove('/tmp/oe-git.log')
-		if path.exists('/tmp/e2-git.log'):
-			remove('/tmp/e2-git.log')
+		self.menu_path = menu_path
+		self.screentitle = _("OE Changes")
 		self.logtype = 'oe'
+		self["menu_path_compressed"] = StaticText("")
 		self["text"] = ScrollLabel()
 		self['title_summary'] = StaticText()
 		self['text_summary'] = StaticText()
@@ -72,51 +70,72 @@ class SoftwareUpdateChanges(Screen):
 		self["text"].pageDown()
 
 	def getlog(self):
+		if config.usage.show_menupath.value == 'large':
+			if not self.menu_path.endswith(self.screentitle):
+				self.menu_path += self.screentitle
+			title = self.menu_path
+			self["menu_path_compressed"].setText("")
+		elif config.usage.show_menupath.value == 'small':
+			title = self.screentitle
+			self["menu_path_compressed"].setText(self.menu_path + " >" if not self.menu_path.endswith(' / ') else self.menu_path[:-3] + " >" or "")
+		else:
+			title = self.screentitle
+			self["menu_path_compressed"].setText("")
+		self.setTitle(title)
+
 		global ocram
-		try:
-			sourcefile = 'http://www.openvix.co.uk/feeds/%s/%s/%s/%s-git.log' % (getImageDistro(), getImageType(), getImageVersion(), self.logtype)
-			sourcefile,headers = urllib.urlretrieve(sourcefile)
-			rename(sourcefile,'/tmp/' + self.logtype + '-git.log')
-			fd = open('/tmp/' + self.logtype + '-git.log', 'r')
-			releasenotes = fd.read()
-			fd.close()
-		except:
-			releasenotes = '404 Not Found'
+		ocramprocessed = False
+		releasenotes = gitlog.fetchlog(self.logtype)
 		if '404 Not Found' not in releasenotes:
-			releasenotes = releasenotes.replace('openvix: build 165', 'openvix: build 000')
-			releasenotes = releasenotes.replace('\nopenvix: build',"\n\nopenvix: build")
+			if getImageType() == 'release':
+				ImageVer = getImageBuild()
+			else:
+				ImageVer = "%s.%s" % (getImageBuild(),getImageDevBuild())
+				ImageVer = float(ImageVer)
+
 			releasenotes = releasenotes.split('\n\n')
 			ver = -1
 			releasever = ""
 			viewrelease = ""
-			while not releasever.isdigit():
+			while not releasever.replace('.','').isdigit():
 				ver += 1
 				releasever = releasenotes[int(ver)].split('\n')
-				releasever = releasever[0].split(' ')
-				if len(releasever) > 2:
-					releasever = releasever[2].replace(':',"")
+				releasever = releasever[0].split('openvix: ')
+				if len(releasever) > 1:
+					releasever = releasever[1].split(' ')
+					tmp = releasever[1].split('.')
+					if len(tmp) > 2:
+						if getImageType() == 'release':
+							releasever = tmp[2]
+						else:
+							releasever = '%s.%s' % (tmp[2], tmp[3])
 				else:
-					releasever = releasever[0].replace(':',"")
-			if self.logtype == 'oe':
-				if int(getImageBuild()) == 1:
-					imagever = int(getImageBuild())-1
-				else:
-					imagever = int(getImageBuild())
-			else:
-				imagever = int(getImageBuild())
-			while int(releasever) > int(imagever):
-				if ocram:
+					releasever = releasever[0]
+
+			while releasever > ImageVer:
+				if ocram and not ocramprocessed and self.logtype == 'oe':
 					viewrelease += releasenotes[int(ver)]+'\n'+ocram+'\n'
-					ocram = ""
+					ocramprocessed = True
 				else:
 					viewrelease += releasenotes[int(ver)]+'\n\n'
 				ver += 1
 				releasever = releasenotes[int(ver)].split('\n')
-				releasever = releasever[0].split(' ')
-				releasever = releasever[2].replace(':',"")
-			if not viewrelease and ocram:
+				releasever = releasever[0].split('openvix: ')
+				if len(releasever) > 1:
+					releasever = releasever[1].split(' ')
+					tmp = releasever[1].split('.')
+					if len(tmp) > 2:
+						if getImageType() == 'release':
+							releasever = tmp[2]
+						else:
+							releasever = '%s.%s' % (tmp[2], tmp[3])
+							releasever = float(releasever)
+				else:
+					releasever = releasever[0]
+
+			if not viewrelease and ocram and not ocramprocessed and self.logtype == 'oe':
 				viewrelease = ocram
-				ocram = ""
+				ocramprocessed = True
 			self["text"].setText(viewrelease)
 			summarytext = viewrelease.split(':\n')
 			try:
@@ -140,7 +159,27 @@ class UpdatePlugin(Screen, ProtectedScreen):
 	def __init__(self, session, *args):
 		Screen.__init__(self, session)
 		ProtectedScreen.__init__(self)
-		Screen.setTitle(self, _("Software Update"))
+		screentitle = _("Software Update")
+		self.menu_path = args[0]
+		if config.usage.show_menupath.value == 'large':
+			self.menu_path += screentitle
+			self.title = self.menu_path
+			self.menu_path_compressed = ""
+			self.menu_path += ' / '
+		elif config.usage.show_menupath.value == 'small':
+			self.title = screentitle
+			condtext = ""
+			if self.menu_path and not self.menu_path.endswith(' / '):
+				condtext = self.menu_path + " >"
+			elif self.menu_path:
+				condtext = self.menu_path[:-3] + " >"
+			self.menu_path_compressed = condtext
+			self.menu_path += screentitle + ' / '
+		else:
+			self.title = screentitle
+			self.menu_path_compressed = ""
+		self["menu_path_compressed"] = StaticText(self.menu_path_compressed)
+		Screen.setTitle(self, self.title)
 
 		self["actions"] = ActionMap(["WizardActions"],
 		{
@@ -181,14 +220,17 @@ class UpdatePlugin(Screen, ProtectedScreen):
 		self.onFirstExecBegin.append(self.checkNetworkState)
 
 	def checkNetworkState(self):
-		self.trafficLight = feedsstatuscheck.getFeedsBool()
-		status_msgs = {'stable': _('Feeds status:   Stable'), 'unstable': _('Feeds status:   Unstable'), 'updating': _('Feeds status:   Updating'), '-2': _('ERROR:   No network found'), '404': _('ERROR:   No internet found'), 'inprogress': _('ERROR: Check is already running in background'), 'unknown': _('Feeds status:   Unknown')}
 		self['tl_red'].hide()
 		self['tl_yellow'].hide()
 		self['tl_green'].hide()
 		self['tl_off'].hide()
+		self.trafficLight = feedsstatuscheck.getFeedsBool() 
+		if self.trafficLight in feedsstatuscheck.feed_status_msgs:
+			status_text = feedsstatuscheck.feed_status_msgs[self.trafficLight]
+		else:
+			status_text = _('Feeds status: Unexpected')
 		if self.trafficLight:
-			self['feedStatusMSG'].setText(status_msgs[str(self.trafficLight)])
+			self['feedStatusMSG'].setText(status_text)
 		if self.trafficLight == 'stable':
 			self['tl_green'].show()
 		elif self.trafficLight == 'unstable':
@@ -286,11 +328,12 @@ class UpdatePlugin(Screen, ProtectedScreen):
 					message += " " + _("Reflash recommended!")
 				if self.total_packages:
 					global ocram
+					ocram = ''
 					for package_tmp in self.ipkg.getFetchedList():
-						if package_tmp[0].startswith('enigma2-plugin-picons-tv-ocram'):
-							ocram = ocram + '[ocram-picons] ' + package_tmp[0].split('enigma2-plugin-picons-tv-ocram.')[1] + 'updated ' + package_tmp[2] + '\n'
-						elif package_tmp[0].startswith('enigma2-plugin-settings-ocram'):
-							ocram = ocram + '[ocram-settings] ' + package_tmp[0].split('enigma2-plugin-picons-tv-ocram.')[1] + 'updated ' + package_tmp[2] + '\n'
+						if package_tmp[0].startswith('enigma2-plugin-picons-snp'):
+							ocram = ocram + '[ocram-picons] ' + package_tmp[0].split('enigma2-plugin-picons-snp-')[1].replace('.',' ') + ' updated ' + package_tmp[2].replace('--',' ') + '\n'
+						elif package_tmp[0].startswith('enigma2-plugin-picons-srp'):
+							ocram = ocram + '[ocram-picons] ' + package_tmp[0].split('enigma2-plugin-picons-srp-')[1].replace('.',' ') + ' updated ' + package_tmp[2].replace('--',' ') + '\n'
 					config.softwareupdate.updatefound.setValue(True)
 					choices = [(_("View the changes"), "changes"),
 						(_("Upgrade and reboot system"), "cold")]
@@ -302,8 +345,8 @@ class UpdatePlugin(Screen, ProtectedScreen):
 					choices.append((_("Update channel list only"), "channels"))
 					choices.append((_("Cancel"), ""))
 					self["actions"].setEnabled(True)
-					upgrademessage = self.session.openWithCallback(self.startActualUpgrade, ChoiceBox, title=message, list=choices, skin_name = "SoftwareUpdateChoices", var=self.trafficLight)
-					upgrademessage.setTitle(_('Software update'))
+					upgrademessage = self.session.openWithCallback(self.startActualUpgrade, ChoiceBox, title=message, list=choices, skin_name = "SoftwareUpdateChoices", var=self.trafficLight, menu_path=self.menu_path_compressed)
+					upgrademessage.setTitle(self.title)
 				else:
 					self["actions"].setEnabled(True)
 					upgrademessage = self.session.openWithCallback(self.close, MessageBox, _("Nothing to upgrade"), type=MessageBox.TYPE_INFO, timeout=10, close_on_any_key=True)
@@ -334,6 +377,7 @@ class UpdatePlugin(Screen, ProtectedScreen):
 				if self.updating:
 					error = _("Update failed. Your %s %s does not have a working internet connection.") % (getMachineBrand(), getMachineName())
 				self.status.setText(_("Error") +  " - " + error)
+				self["actions"].setEnabled(True)
 		elif event == IpkgComponent.EVENT_LISTITEM:
 			if 'enigma2-plugin-settings-' in param[0] and self.channellist_only > 0:
 				self.channellist_name = param[0]
@@ -367,10 +411,10 @@ class UpdatePlugin(Screen, ProtectedScreen):
 			choices.append((_("Update channel list only"), "channels"))
 			choices.append((_("Cancel"), ""))
 			self["actions"].setEnabled(True)
-			upgrademessage = self.session.openWithCallback(self.startActualUpgrade, ChoiceBox, title=message, list=choices, skin_name = "SoftwareUpdateChoices", var=self.trafficLight)
-			upgrademessage.setTitle(_('Software update'))
+			upgrademessage = self.session.openWithCallback(self.startActualUpgrade, ChoiceBox, title=message, list=choices, skin_name="SoftwareUpdateChoices", var=self.trafficLight, menu_path=self.menu_path_compressed)
+			upgrademessage.setTitle(self.title)
 		elif answer[1] == "changes":
-			self.session.openWithCallback(self.startActualUpgrade,SoftwareUpdateChanges)
+			self.session.openWithCallback(self.startActualUpgrade,SoftwareUpdateChanges, self.menu_path)
 		elif answer[1] == "backup":
 			self.doSettingsBackup()
 		elif answer[1] == "imagebackup":

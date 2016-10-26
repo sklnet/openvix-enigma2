@@ -16,7 +16,7 @@ from Screens.ServiceStopScreen import ServiceStopScreen
 from Screens.AutoDiseqc import AutoDiseqc
 from Tools.BoundFunction import boundFunction
 
-from time import mktime, localtime
+from time import mktime, localtime, time
 from datetime import datetime
 from os import path
 
@@ -123,6 +123,7 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 		self.advancedSCR = None
 		self.advancedDiction = None
 		self.advancedConnected = None
+		self.advancedUnicableTuningAlgo = None
 		self.showAdditionalMotorOptions = None
 		self.selectSatsEntry = None
 		self.advancedSelectSatsEntry = None
@@ -231,6 +232,12 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 			if self.nimConfig.configMode.value == "enabled":
 				self.list.append(getConfigListEntry(_("Terrestrial provider"), self.nimConfig.terrestrial))
 				self.list.append(getConfigListEntry(_("Enable 5V for active antenna"), self.nimConfig.terrestrial_5V))
+		elif self.nim.isCompatible("ATSC"):
+			self.configMode = getConfigListEntry(_("Configuration mode"), self.nimConfig.configMode)
+			self.list.append(self.configMode)
+			if self.nimConfig.configMode.value == "enabled":
+				self.list.append(getConfigListEntry(_("ATSC provider"), self.nimConfig.atsc))
+			self.have_advanced = False
 		else:
 			self.have_advanced = False
 		self["config"].list = self.list
@@ -238,12 +245,12 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 
 	def newConfig(self):
 		self.setTextKeyBlue()
-		checkList = (self.configMode, self.diseqcModeEntry, self.advancedSatsEntry,
-					 self.advancedLnbsEntry, self.advancedDiseqcMode, self.advancedUsalsEntry,
-					 self.advancedLof, self.advancedPowerMeasurement, self.turningSpeed,
-					 self.advancedType, self.advancedSCR, self.advancedDiction, self.advancedManufacturer, self.advancedUnicable, self.advancedConnected,
-					 self.toneburst, self.committedDiseqcCommand, self.uncommittedDiseqcCommand, self.singleSatEntry,
-					 self.commandOrder, self.showAdditionalMotorOptions, self.cableScanType, self.multiType)
+		checkList = (self.configMode, self.diseqcModeEntry, self.advancedSatsEntry, \
+			self.advancedLnbsEntry, self.advancedDiseqcMode, self.advancedUsalsEntry, \
+			self.advancedLof, self.advancedPowerMeasurement, self.turningSpeed, \
+			self.advancedType, self.advancedSCR, self.advancedDiction, self.advancedManufacturer, self.advancedUnicable, self.advancedConnected, self.advancedUnicableTuningAlgo,\
+			self.toneburst, self.committedDiseqcCommand, self.uncommittedDiseqcCommand, self.singleSatEntry, \
+			self.commandOrder, self.showAdditionalMotorOptions, self.cableScanType, self.multiType)
 		if self["config"].getCurrent() == self.multiType:
 			update_slots = [self.slotid]
 			from Components.NimManager import InitNimManager
@@ -366,6 +373,9 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 						self.list.append(self.advancedSCR)
 						self.list.append(getConfigListEntry(_("Frequency"), manufacturer.vco[product_name][manufacturer.scr[product_name].index]))
 
+				self.advancedUnicableTuningAlgo = getConfigListEntry(_("Tuning algorithm"), currLnb.unicableTuningAlgo)
+				self.list.append(self.advancedUnicableTuningAlgo)
+
 				choices = []
 				connectable = nimmanager.canConnectTo(self.slotid)
 				for id in connectable:
@@ -381,7 +391,7 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 						self.list.append(getConfigListEntry(_("Connected to"),self.nimConfig.advanced.unicableconnectedTo))
 				print "[Satconfig] unicableconnectedTo choices : ", choices
 
-			else:	#kein Unicable
+			else:	#no Unicable
 				self.list.append(getConfigListEntry(_("Voltage mode"), Sat.voltage))
 				self.list.append(getConfigListEntry(_("Increased voltage"), currLnb.increased_voltage))
 				self.list.append(getConfigListEntry(_("Tone mode"), Sat.tonemode))
@@ -533,6 +543,8 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 		return checkRecursiveConnect(self.slotid)
 
 	def keyOk(self):
+		if self["config"].isChanged():
+			self.stopService()
 		if self["config"].getCurrent() == self.advancedSelectSatsEntry:
 			conf = self.nimConfig.advanced.sat[int(self.nimConfig.advanced.sats.value)].userSatellitesList
 			self.session.openWithCallback(boundFunction(self.updateConfUserSatellitesList, conf), SelectSatsEntryScreen, userSatlist=conf.value)
@@ -548,13 +560,14 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 			conf.save()
 
 	def keySave(self):
+		if self["config"].isChanged():
+			self.stopService()
 		if not self.unicableconnection():
 			self.session.open(MessageBox, _("The unicable connection setting is wrong.\n Maybe recursive connection of tuners."),MessageBox.TYPE_ERROR,timeout=10)
 			return
 		if not self.checkLoopthrough():
 			self.session.open(MessageBox, _("The loopthrough setting is wrong."),MessageBox.TYPE_ERROR,timeout=10)
 			return
-
 		old_configured_sats = nimmanager.getConfiguredSats()
 		if not self.run():
 			return
@@ -595,14 +608,25 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 				self.deleteConfirmed(confirmed)
 			break
 		else:
-			self.restoreService(_("Zap back to service before tuner setup?"))
+			self.restartPrevService()
 
-	def __init__(self, session, slotid):
+	def __init__(self, session, slotid, menu_path=""):
 		Screen.__init__(self, session)
-		Screen.setTitle(self, _("Tuner settings"))
+		screentitle = _("Tuner settings")
+		if config.usage.show_menupath.value == 'large':
+			menu_path += screentitle
+			title = menu_path
+			self["menu_path_compressed"] = StaticText("")
+		elif config.usage.show_menupath.value == 'small':
+			title = screentitle
+			self["menu_path_compressed"] = StaticText(menu_path + " >" if not menu_path.endswith(' / ') else menu_path[:-3] + " >" or "")
+		else:
+			title = screentitle
+			self["menu_path_compressed"] = StaticText("")
+		Screen.setTitle(self, title)
+
 		self.list = [ ]
 		ServiceStopScreen.__init__(self)
-		self.stopService()
 		ConfigListScreen.__init__(self, self.list)
 
 		self["key_red"] = Label(_("Close"))
@@ -626,10 +650,7 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 		self.nimConfig = self.nim.config
 		self.createConfigMode()
 		self.createSetup()
-		self.onLayoutFinish.append(self.layoutFinished)
-
-	def layoutFinished(self):
-		self.setTitle(_("Reception Settings"))
+		self.setTitle(_("Setup") + " " + self.nim.friendly_full_description)
 
 	def keyLeft(self):
 		if self.nim.isFBCLink():
@@ -668,7 +689,7 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 		if self["config"].isChanged():
 			self.session.openWithCallback(self.cancelConfirm, MessageBox, _("Really close without saving settings?"), default = False)
 		else:
-			self.restoreService(_("Zap back to service before tuner setup?"))
+			self.restartPrevService()
 
 	def saveAll(self):
 		if self.nim.isCompatible("DVB-S"):
@@ -681,10 +702,9 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 			# sanity check for empty sat list
 			if self.nimConfig.configMode.value != "satposdepends" and len(nimmanager.getSatListForNim(self.slotid)) < 1:
 				self.nimConfig.configMode.value = "nothing"
-		if self["config"].isChanged():
-			for x in self["config"].list:
-				x[1].save()
-			configfile.save()
+		for x in self["config"].list:
+			x[1].save()
+		configfile.save()
 
 	def cancelConfirm(self, result):
 		if not result:
@@ -693,7 +713,7 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 			x[1].cancel()
 		# we need to call saveAll to reset the connectedTo choices
 		self.saveAll()
-		self.restoreService(_("Zap back to service before tuner setup?"))
+		self.restartPrevService()
 
 	def changeConfigurationMode(self):
 		if self.configMode:
@@ -710,9 +730,28 @@ class NimSetup(Screen, ConfigListScreen, ServiceStopScreen):
 			self.createSetup()
 
 class NimSelection(Screen):
-	def __init__(self, session):
+	def __init__(self, session, menu_path=""):
 		Screen.__init__(self, session)
-		Screen.setTitle(self, _("Tuner configuration"))
+		screentitle = _("Tuner configuration")
+		self.menu_path = menu_path
+		if config.usage.show_menupath.value == 'large':
+			self.menu_path += screentitle
+			title = self.menu_path
+			self["menu_path_compressed"] = StaticText("")
+			self.menu_path += ' / '
+		elif config.usage.show_menupath.value == 'small':
+			title = screentitle
+			condtext = ""
+			if self.menu_path and not self.menu_path.endswith(' / '):
+				condtext = self.menu_path + " >"
+			elif self.menu_path:
+				condtext = self.menu_path[:-3] + " >"
+			self["menu_path_compressed"] = StaticText(condtext)
+			self.menu_path += screentitle + ' / '
+		else:
+			title = screentitle
+			self["menu_path_compressed"] = StaticText("")
+		Screen.setTitle(self, title)
 
 		self.list = [None] * nimmanager.getSlotCount()
 		self["nimlist"] = List(self.list)
@@ -733,7 +772,6 @@ class NimSelection(Screen):
 			"green": self.okbuttonClick,
 			"menu": self.exit,
 		}, -2)
-		self.setTitle(_("Choose Tuner"))
 
 	def exit(self):
 		self.close(True)
@@ -745,19 +783,24 @@ class NimSelection(Screen):
 		nim = self["nimlist"].getCurrent()
 		nim = nim and nim[3]
 		if config.usage.setup_level.index >= 2 and nim is not None:
-			text = _("Capabilities: ") + ",".join(eDVBResourceManager.getInstance().getFrontendCapabilities(nim.slot).splitlines())
+			text = _("Capabilities: ") + eDVBResourceManager.getInstance().getFrontendCapabilities(nim.slot)
 			self.session.open(MessageBox, text, MessageBox.TYPE_INFO, simple=True)
 
 	def okbuttonClick(self):
-		nim = self["nimlist"].getCurrent()
-		nim = nim and nim[3]
+		recordings = self.session.nav.getRecordings()
+		next_rec_time = self.session.nav.RecordTimer.getNextRecordingTime()
+		if recordings or (next_rec_time and next_rec_time > 0 and (next_rec_time - time()) < 360):
+			self.session.open(MessageBox, _("Recording(s) are in progress or coming up in few seconds!"), MessageBox.TYPE_INFO, timeout=5, enable_input=False)
+		else:
+			nim = self["nimlist"].getCurrent()
+			nim = nim and nim[3]
 
-		nimConfig = nimmanager.getNimConfig(nim.slot)
-		if nim.isFBCLink() and nimConfig.configMode.value == "nothing" and not getLinkedSlotID(nim.slot) == -1:
-			return
+			nimConfig = nimmanager.getNimConfig(nim.slot)
+			if nim.isFBCLink() and nimConfig.configMode.value == "nothing" and not getLinkedSlotID(nim.slot) == -1:
+				return
 
-		if nim is not None and not nim.empty and nim.isSupported():
-			self.session.openWithCallback(boundFunction(self.NimSetupCB, self["nimlist"].getIndex()), self.resultclass, nim.slot)
+			if nim is not None and not nim.empty and nim.isSupported():
+				self.session.openWithCallback(boundFunction(self.NimSetupCB, self["nimlist"].getIndex()), self.resultclass, nim.slot)
 
 	def NimSetupCB(self, index=None):
 		self.updateList(index)
@@ -823,7 +866,7 @@ class NimSelection(Screen):
 							text = _("Simple")
 					elif nimConfig.configMode.value == "advanced":
 						text = _("Advanced")
-				elif x.isCompatible("DVB-T") or x.isCompatible("DVB-C"):
+				elif x.isCompatible("DVB-T") or x.isCompatible("DVB-C") or x.isCompatible("ATSC"):
 					if nimConfig.configMode.value == "nothing":
 						text = _("Nothing connected")
 					elif nimConfig.configMode.value == "enabled":
@@ -854,8 +897,21 @@ class SelectSatsEntryScreen(Screen):
 			<ePixmap pixmap="skin_default/div-h.png" position="0,375" zPosition="1" size="540,2" transparent="1" alphatest="on" />
 			<widget name="hint" position="10,380" size="540,25" font="Regular;19" halign="center" transparent="1" />
 		</screen>"""
-	def __init__(self, session, userSatlist=""):
+	def __init__(self, session, menu_path="", userSatlist=""):
 		Screen.__init__(self, session)
+		screentitle = _("Select satellites")
+		if config.usage.show_menupath.value == 'large':
+			menu_path += screentitle
+			title = menu_path
+			self["menu_path_compressed"] = StaticText("")
+		elif config.usage.show_menupath.value == 'small':
+			title = screentitle
+			self["menu_path_compressed"] = StaticText(menu_path + " >" if not menu_path.endswith(' / ') else menu_path[:-3] + " >" or "")
+		else:
+			title = screentitle
+			self["menu_path_compressed"] = StaticText("")
+		Screen.setTitle(self, title)
+
 		self["key_red"] = Button(_("Cancel"))
 		self["key_green"] = Button(_("Save"))
 		self["key_yellow"] = Button(_("Sort by"))
@@ -884,7 +940,6 @@ class SelectSatsEntryScreen(Screen):
 			"cancel": self.cancel,
 			"ok": self["list"].toggleSelection,
 		}, -2)
-		self.setTitle(_("Select satellites"))
 
 	def save(self):
 		val = [x[0][1] for x in self["list"].list if x[0][3]]

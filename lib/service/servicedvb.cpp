@@ -265,6 +265,7 @@ int eStaticServiceDVBBouquetInformation::isPlayable(const eServiceReference &ref
 							tmp = prio_map[prio_order][2];
 							break;
 						case iDVBFrontend::feCable:
+						case iDVBFrontend::feATSC:
 							tmp = prio_map[prio_order][1];
 							break;
 						default:
@@ -1544,7 +1545,10 @@ RESULT eDVBServicePlay::setFastForward_internal(int ratio, bool final_seek)
 	m_skipmode = skipmode;
 
 	if (final_seek)
-		eDebug("[eDVBServicePlay] setFastForward trickplay stopped .. ret %d, pos %lld", getPlayPosition(pos), pos);
+	{
+		RESULT r = getPlayPosition(pos);
+		eDebug("[eDVBServicePlay] setFastForward trickplay stopped .. ret %d, pos %lld", r, pos);
+	}
 
 	m_fastforward = ffratio;
 
@@ -1559,7 +1563,10 @@ RESULT eDVBServicePlay::setFastForward_internal(int ratio, bool final_seek)
 		ret = m_decoder->setTrickmode();
 
 	if (pos)
-		eDebug("[eDVBServicePlay] setFastForward final seek after trickplay ret %d", seekTo(pos));
+	{
+		RESULT r = seekTo(pos);
+		eDebug("[eDVBServicePlay] setFastForward final seek after trickplay ret %d", r);
+	}
 
 	return ret;
 }
@@ -1937,6 +1944,7 @@ int eDVBServicePlay::getInfo(int w)
 	}
 	case sIsCrypted: if (no_program_info) return false; return program.isCrypted();
 	case sIsDedicated3D: if (m_dvb_service) return m_dvb_service->isDedicated3D(); return false;
+	case sHideVBI: if (m_dvb_service) return m_dvb_service->doHideVBI(); return false;
 	case sVideoPID:
 		if (m_dvb_service)
 		{
@@ -2123,6 +2131,7 @@ int eDVBServicePlay::selectAudioStream(int i)
 	eDVBServicePMTHandler::program program;
 	eDVBServicePMTHandler &h = m_timeshift_active ? m_service_handler_timeshift : m_service_handler;
 	pts_t position = -1;
+	RESULT ret;
 
 	if (h.getProgramInfo(program))
 		return -1;
@@ -2146,7 +2155,10 @@ int eDVBServicePlay::selectAudioStream(int i)
 	}
 
 	if (i != -1 && apid != m_current_audio_pid && (m_is_pvr || m_timeshift_active))
-		eDebug("[eDVBServicePlay] getPlayPosition ret %d, pos %lld in selectAudioStream", getPlayPosition(position), position);
+	{
+		ret = getPlayPosition(position);
+		eDebug("[eDVBServicePlay] getPlayPosition ret %d, pos %lld in selectAudioStream", ret, position);
+	}
 
 	m_current_audio_pid = apid;
 
@@ -2157,7 +2169,10 @@ int eDVBServicePlay::selectAudioStream(int i)
 	}
 
 	if (position != -1)
-		eDebug("[eDVBServicePlay] seekTo ret %d", seekTo(position));
+	{
+		ret = seekTo(position);
+		eDebug("[eDVBServicePlay] seekTo ret %d", ret);
+	}
 
 	int rdsPid = apid;
 
