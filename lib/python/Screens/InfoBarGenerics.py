@@ -548,6 +548,7 @@ class InfoBarShowHide(InfoBarScreenSaver):
 		for x in self.onShowHideNotifiers:
 			x(True)
 		self.startHideTimer()
+		VolumeControl.instance and VolumeControl.instance.showMute()
 		
 	def doDimming(self):
 		if config.usage.show_infobar_do_dimming.value:
@@ -1487,7 +1488,7 @@ class InfoBarEPG:
 
 	def InfoPressed(self):
 		if isStandardInfoBar(self) or isMoviePlayerInfoBar(self):
-			if getBrandOEM() in ('skylake', 'xtrend', 'odin', 'ini', 'dags' ,'gigablue', 'xp', 'ceryon', 'broadmedia', 'gfutures', 'xcore'):
+			if getBrandOEM() in ('formuler', 'skylake', 'xtrend', 'odin', 'ini', 'dags' ,'gigablue', 'xp', 'ceryon', 'broadmedia', 'gfutures', 'xcore'):
 				self.openEventView()
 			else:
 				self.showDefaultEPG()
@@ -4026,7 +4027,7 @@ class InfoBarHdmi:
 		self.hdmi_enabled_full = False
 		self.hdmi_enabled_pip = False
 
-		if getMachineBuild() in ('inihdp', 'hd2400'):
+		if getMachineBuild() in ('hd2400', 'inihdp', 'vuultimo4k'):
 			if not self.hdmi_enabled_full:
 				self.addExtension((self.getHDMIInFullScreen, self.HDMIInFull, lambda: True), "blue")
 			if not self.hdmi_enabled_pip:

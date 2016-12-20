@@ -247,7 +247,6 @@ public:
 	bool frontendIsCompatible(int index, const char *type);
 	bool frontendIsMultistream(int index);
 	std::string getFrontendCapabilities(int index);
-	std::string getFrontendDeliverySystem(int index);
 	void setFrontendType(int index, const char *type);
 protected:
 	void initDemux(int num_demux);
