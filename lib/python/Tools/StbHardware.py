@@ -3,6 +3,7 @@ from os import path
 from fcntl import ioctl
 from struct import pack, unpack
 from boxbranding import getBrandOEM
+from Components.config import config
 
 def getFPVersion():
 	ret = None
@@ -14,7 +15,7 @@ def getFPVersion():
 			ret = ioctl(fp.fileno(),0)
 			fp.close()
 		except IOError:
-			print "getFPVersion failed!"
+			print "[StbHardware] Error: getFPVersion failed!"
 	return ret
 
 def setFPWakeuptime(wutime):
@@ -28,15 +29,15 @@ def setFPWakeuptime(wutime):
 			ioctl(fp.fileno(), 6, pack('L', wutime)) # set wake up
 			fp.close()
 		except IOError:
-			print "setFPWakeupTime failed!"
+			print "[StbHardware] Error: setFPWakeupTime failed!"
 
 def setRTCoffset():
 	forsleep = (localtime(time()).tm_hour-gmtime(time()).tm_hour)*3600
-	print "[RTC] set RTC offset to %s sec." % (forsleep)
+	print "[StbHardware] Set RTC offset to %s sec." % (forsleep)
 	try:
 		open("/proc/stb/fp/rtc_offset", "w").write(str(forsleep))
 	except IOError:
-		print "setRTCoffset failed!"
+		print "[StbHardware] Error: setRTCoffset failed!"
 
 def setRTCtime(wutime):
 	if path.exists("/proc/stb/fp/rtc_offset"):
@@ -51,7 +52,7 @@ def setRTCtime(wutime):
 			ioctl(fp.fileno(), 0x101, pack('L', wutime)) # set wake up
 			fp.close()
 		except IOError:
-			print "setRTCtime failed!"
+			print "[StbHardware] Error: setRTCtime failed!"
 
 def getFPWakeuptime():
 	ret = 0
@@ -65,7 +66,7 @@ def getFPWakeuptime():
 			ret = unpack('L', ioctl(fp.fileno(), 5, '    '))[0] # get wakeuptime
 			fp.close()
 		except IOError:
-			print "getFPWakeupTime failed!"
+			print "[StbHardware] Error: getFPWakeupTime failed!"
 	return ret
 
 wasTimerWakeup = None
@@ -86,7 +87,7 @@ def getFPWasTimerWakeup():
 			wasTimerWakeup = unpack('B', ioctl(fp.fileno(), 9, ' '))[0] and True or False
 			fp.close()
 		except IOError:
-			print "wasTimerWakeup failed!"
+			print "[StbHardware] Error: getFPWasTimerWakeup failed!"
 	if wasTimerWakeup:
 		# clear hardware status
 		clearFPWasTimerWakeup()
@@ -103,4 +104,4 @@ def clearFPWasTimerWakeup():
 			ioctl(fp.fileno(), 10)
 			fp.close()
 		except IOError:
-			print "clearFPWasTimerWakeup failed!"
+			print "[StbHardware] Error: clearFPWasTimerWakeup failed!"
