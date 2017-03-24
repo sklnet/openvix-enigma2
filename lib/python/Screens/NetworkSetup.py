@@ -571,17 +571,13 @@ class AdapterSetup(Screen, ConfigListScreen, HelpableScreen):
 		self.default = None
 
 		if iNetwork.isWirelessInterface(self.iface):
-			if iNetwork.detectWlanModule(self.iface) == 'wl':
-				from Plugins.SystemPlugins.WirelessLan.Wlan import wl
-				self.ws = wl()
-			else:
-				from Plugins.SystemPlugins.WirelessLan.Wlan import wpaSupplicant
-				self.ws = wpaSupplicant()
+			from Plugins.SystemPlugins.WirelessLan.Wlan import wpaSupplicant
+			self.ws = wpaSupplicant()
 			self.encryptionlist = []
 			self.encryptionlist.append(("Unencrypted", _("Unencrypted")))
 			self.encryptionlist.append(("WEP", _("WEP")))
 			self.encryptionlist.append(("WPA", _("WPA")))
-			if iNetwork.detectWlanModule(self.iface) != 'wl':
+			if not os_path.exists("/tmp/bcm/" + self.iface):
 				self.encryptionlist.append(("WPA/WPA2", _("WPA or WPA2")))
 			self.encryptionlist.append(("WPA2", _("WPA2")))
 			self.weplist = []
@@ -637,24 +633,27 @@ class AdapterSetup(Screen, ConfigListScreen, HelpableScreen):
 			for p in plugins.getPlugins(PluginDescriptor.WHERE_NETWORKSETUP):
 				callFnc = p.__call__["ifaceSupported"](self.iface)
 				if callFnc is not None:
-					if p.__call__.has_key("WlanPluginEntry"): # internally used only for WLAN Plugin
+					if "WlanPluginEntry" in p.__call__: # internally used only for WLAN Plugin
 						self.extended = callFnc
-						if p.__call__.has_key("configStrings"):
+						if "configStrings" in p.__call__:
 							self.configStrings = p.__call__["configStrings"]
 
-						self.hiddenSSID = getConfigListEntry(_("Hidden network"), config.plugins.wlan.hiddenessid)
-						self.list.append(self.hiddenSSID)
+						isExistBcmWifi = os_path.exists("/tmp/bcm/" + self.iface)
+						if not isExistBcmWifi:
+							self.hiddenSSID = getConfigListEntry(_("Hidden network"), config.plugins.wlan.hiddenessid)
+							self.list.append(self.hiddenSSID)
 						self.wlanSSID = getConfigListEntry(_("Network name (SSID)"), config.plugins.wlan.essid)
 						self.list.append(self.wlanSSID)
 						self.encryption = getConfigListEntry(_("Encryption"), config.plugins.wlan.encryption)
 						self.list.append(self.encryption)
-
-						self.encryptionType = getConfigListEntry(_("Encryption key type"), config.plugins.wlan.wepkeytype)
+						if not isExistBcmWifi:
+							self.encryptionType = getConfigListEntry(_("Encryption key type"), config.plugins.wlan.wepkeytype)
 						self.encryptionKey = getConfigListEntry(_("Encryption key"), config.plugins.wlan.psk)
 
 						if config.plugins.wlan.encryption.value != "Unencrypted":
 							if config.plugins.wlan.encryption.value == 'WEP':
-								self.list.append(self.encryptionType)
+								if not isExistBcmWifi:
+									self.list.append(self.encryptionType)
 							self.list.append(self.encryptionKey)
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
@@ -1048,16 +1047,16 @@ class AdapterSetupConfiguration(Screen, HelpableScreen):
 			callFnc = p.__call__["ifaceSupported"](self.iface)
 			if callFnc is not None:
 				self.extended = callFnc
-				if p.__call__.has_key("WlanPluginEntry"): # internally used only for WLAN Plugin
+				if "WlanPluginEntry" in p.__call__: # internally used only for WLAN Plugin
 					menu.append((_("Scan wireless networks"), "scanwlan"))
 					if iNetwork.getAdapterAttribute(self.iface, "up"):
 						menu.append((_("Show WLAN status"), "wlanstatus"))
 				else:
-					if p.__call__.has_key("menuEntryName"):
+					if "menuEntryName" in p.__call__:
 						menuEntryName = p.__call__["menuEntryName"](self.iface)
 					else:
 						menuEntryName = _('Extended setup...')
-					if p.__call__.has_key("menuEntryDescription"):
+					if "menuEntryDescription" in p.__call__:
 						menuEntryDescription = p.__call__["menuEntryDescription"](self.iface)
 					else:
 						menuEntryDescription = _('Extended network setup plugin...')
@@ -1425,27 +1424,27 @@ class NetworkAdapterTest(Screen):
 		self["infoshortcuts"].setEnabled(True)
 		self["shortcuts"].setEnabled(False)
 		if self.activebutton == 1: # Adapter Check
-			self["InfoText"].setText(_("This test detects your configured LAN adapter."))
+			self["InfoText"].setText(_("LAN adapter\n\nThis test detects your configured LAN adapter."))
 			self["InfoTextBorder"].show()
 			self["InfoText"].show()
 			self["key_red"].setText(_("Back"))
 		if self.activebutton == 2: #LAN Check
-			self["InfoText"].setText(_("This test checks whether a network cable is connected to your LAN adapter.\nIf you get a \"disconnected\" message:\n- verify that a network cable is attached\n- verify that the cable is not broken"))
+			self["InfoText"].setText(_("Local network\n\nThis test checks whether a network cable is connected to your LAN adapter.\n\nIf you get a \"disconnected\" message:\n- Verify that a network cable is attached.\n- Verify that the cable is not broken."))
 			self["InfoTextBorder"].show()
 			self["InfoText"].show()
 			self["key_red"].setText(_("Back"))
 		if self.activebutton == 3: #DHCP Check
-			self["InfoText"].setText(_("This test checks whether your LAN adapter is set up for automatic IP address configuration with DHCP.\nIf you get a \"disabled\" message:\n - then your LAN adapter is configured for manual IP setup\n- verify thay you have entered correct IP informations in the adapter setup dialog.\nIf you get an \"enabled\" message:\n-verify that you have a configured and working DHCP server in your network."))
+			self["InfoText"].setText(_("DHCP\n\nThis test checks whether your LAN adapter is set up for automatic IP address configuration with DHCP.\n\nIf you get a \"disabled\" message:\n- Your LAN adapter is configured for manual IP setup.\n- Verify that you have entered correct IP informations in the adapter setup dialog.\n\nIf you get an \"enabled\" message:\n- Verify that you have a configured and working DHCP server in your network."))
 			self["InfoTextBorder"].show()
 			self["InfoText"].show()
 			self["key_red"].setText(_("Back"))
 		if self.activebutton == 4: # IP Check
-			self["InfoText"].setText(_("This test checks whether a valid IP address is found for your LAN adapter.\nIf you get a \"unconfirmed\" message:\n- no valid IP address was found\n- please check your DHCP server, cabling and adapter setup"))
+			self["InfoText"].setText(_("IP address\n\nThis test checks whether a valid IP address is found for your LAN adapter.\n\nIf you get a \"unconfirmed\" message:\n- No valid IP address was found.\n- Please check your DHCP server, cabling and adapter setup."))
 			self["InfoTextBorder"].show()
 			self["InfoText"].show()
 			self["key_red"].setText(_("Back"))
 		if self.activebutton == 5: # DNS Check
-			self["InfoText"].setText(_("This test checks for configured nameservers.\nIf you get a \"unconfirmed\" message:\n- please check your DHCP server, cabling and adapter setup\n- if you configured your nameservers manually please verify your entries in the \"Nameserver\" configuration"))
+			self["InfoText"].setText(_("Nameserver\n\nThis test checks for configured nameservers.\n\nIf you get a \"unconfirmed\" message:\n- Please check your DHCP server, cabling and adapter setup.\n- If you configured your nameservers manually please verify your entries in the \"Nameserver\" configuration."))
 			self["InfoTextBorder"].show()
 			self["InfoText"].show()
 			self["key_red"].setText(_("Back"))

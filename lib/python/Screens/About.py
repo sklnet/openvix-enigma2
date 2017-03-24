@@ -1,5 +1,6 @@
 from Screen import Screen
 from Screens.SoftwareUpdate import UpdatePlugin
+from Screens.GitCommitInfo import CommitInfo
 from Components.ActionMap import ActionMap
 from Components.Button import Button
 from Components.Sources.StaticText import StaticText
@@ -10,11 +11,10 @@ from Components.ScrollLabel import ScrollLabel
 from Components.Console import Console
 from Components.config import config
 from enigma import eTimer, getEnigmaVersionString, getDesktop
-from boxbranding import getBoxType, getMachineBrand, getMachineName, getImageVersion, getImageType, getImageBuild, getDriverDate, getImageDevBuild
+from boxbranding import getMachineBrand, getMachineName, getImageVersion, getImageType, getImageBuild, getDriverDate, getImageDevBuild
 from Components.Pixmap import MultiPixmap
 from Components.Network import iNetwork
 from Tools.StbHardware import getFPVersion
-from Components.InputDevice import iInputDevices, iRcTypeControl
 from os import path
 from re import search
 import skin
@@ -44,7 +44,7 @@ class About(Screen):
 		Screen.setTitle(self, title)
 		self.skinName = "AboutOE"
 		self.populate()
-		
+
 		self["key_red"] = Button(_("Close"))
 		self["key_green"] = Button(_("Translations"))
 		self["key_yellow"] = Button(_("Software update"))
@@ -70,12 +70,13 @@ class About(Screen):
 
 		AboutText += _("Model:\t%s %s\n") % (getMachineBrand(), getMachineName())
 
-		if path.exists('/proc/stb/info/chipset'):
-			AboutText += _("Chipset:\tBCM%s\n") % about.getChipSetString()
+		if about.getChipSetString() != _("unavailable"):
+			if about.getIsBroadcom():
+				AboutText += _("Chipset:\tBCM%s\n") % about.getChipSetString().upper()
+			else:
+				AboutText += _("Chipset:\t%s\n") % about.getChipSetString().upper()
 
-		AboutText += _("CPU:\t%s\n") % about.getCPUString().replace('bcm', 'BCM')
-		AboutText += _("CPU speed:\t%s\n") % about.getCPUSpeedString()
-		AboutText += _("Cores:\t%s\n") % about.getCpuCoresString()
+		AboutText += _("CPU:\t%s %s %s\n") % (about.getCPUArch(), about.getCPUSpeedString(), about.getCpuCoresString())
 		imageSubBuild = ""
 		if getImageType() != 'release':
 			imageSubBuild = ".%s" % getImageDevBuild()
@@ -136,7 +137,7 @@ class About(Screen):
 				f = open('/sys/firmware/devicetree/base/bolt/tag', 'r')
 				bootloader = f.readline().replace('\x00', '').replace('\n', '')
 				f.close()
-				AboutText += _("Bootloader:\t\t%s\n") % (bootloader)
+				AboutText += _("Bootloader:\t%s\n") % (bootloader)
 
 		self["AboutScrollLabel"] = ScrollLabel(AboutText)
 
@@ -147,7 +148,7 @@ class About(Screen):
 		self.session.open(UpdatePlugin, self.menu_path)
 
 	def showAboutReleaseNotes(self):
-		self.session.open(ViewGitLog, self.menu_path)
+		self.session.open(CommitInfo, self.menu_path)
 
 	def createSummary(self):
 		return AboutSummary
@@ -431,6 +432,8 @@ class SystemNetworkInfo(Screen):
 		self["statuspic"].show()
 		self["devicepic"] = MultiPixmap()
 
+		self["AboutScrollLabel"] = ScrollLabel()
+
 		self.iface = None
 		self.createscreen()
 		self.iStatus = None
@@ -495,13 +498,32 @@ class SystemNetworkInfo(Screen):
 				self.AboutText += _("MAC:") + "\t" + wlan0['hwaddr'] + "\n"
 			self.iface = 'wlan0'
 
+		wlan3 = about.getIfConfig('wlan3')
+		if wlan3.has_key('addr'):
+			self.AboutText += _("IP:") + "\t" + wlan3['addr'] + "\n"
+			if wlan3.has_key('netmask'):
+				self.AboutText += _("Netmask:") + "\t" + wlan3['netmask'] + "\n"
+			if wlan3.has_key('hwaddr'):
+				self.AboutText += _("MAC:") + "\t" + wlan3['hwaddr'] + "\n"
+			self.iface = 'wlan3'
+
 		rx_bytes, tx_bytes = about.getIfTransferredData(self.iface)
 		self.AboutText += "\n" + _("Bytes received:") + "\t" + rx_bytes + "\n"
 		self.AboutText += _("Bytes sent:") + "\t" + tx_bytes + "\n"
 
+		self.console = Console()
+		self.console.ePopen('ethtool %s' % self.iface, self.SpeedFinished)
+
+	def SpeedFinished(self, result, retval, extra_args):
+		result_tmp = result.split('\n')
+		for line in result_tmp:
+			if 'Speed:' in line:
+				speed = line.split(': ')[1][:-4]
+				self.AboutText += _("Speed:") + "\t" + speed + _('Mb/s')
+
 		hostname = file('/proc/sys/kernel/hostname').read()
 		self.AboutText += "\n" + _("Hostname:") + "\t" + hostname + "\n"
-		self["AboutScrollLabel"] = ScrollLabel(self.AboutText)
+		self["AboutScrollLabel"].setText(self.AboutText)
 
 	def cleanup(self):
 		if self.iStatus:
@@ -516,7 +538,7 @@ class SystemNetworkInfo(Screen):
 		if data is not None:
 			if data is True:
 				if status is not None:
-					if self.iface == 'wlan0' or self.iface == 'ra0':
+					if self.iface == 'wlan0' or self.iface == 'wlan3' or self.iface == 'ra0':
 						if status[self.iface]["essid"] == "off":
 							essid = _("No Connection")
 						else:
@@ -607,13 +629,11 @@ class SystemNetworkInfo(Screen):
 						self["statuspic"].setPixmapNum(0)
 					else:
 						self["statuspic"].setPixmapNum(1)
-					self["statuspic"].show()
 				else:
 					self["statuspic"].setPixmapNum(1)
-					self["statuspic"].show()
 			else:
 				self["statuspic"].setPixmapNum(1)
-				self["statuspic"].show()
+			self["statuspic"].show()
 		except:
 			pass
 
@@ -654,90 +674,6 @@ class AboutSummary(Screen):
 			AboutText += _("System temperature: %s") % tempinfo.replace('\n', '') + mark + "C\n\n"
 
 		self["AboutText"] = StaticText(AboutText)
-
-
-class ViewGitLog(Screen):
-	def __init__(self, session, menu_path = ""):
-		Screen.__init__(self, session)
-		self.menu_path = menu_path
-		self.screentitle = _("OE Changes")
-		self.skinName = "SoftwareUpdateChanges"
-		self.logtype = 'oe'
-		self["menu_path_compressed"] = StaticText("")
-		self["text"] = ScrollLabel()
-		self['title_summary'] = StaticText()
-		self['text_summary'] = StaticText()
-		self["key_red"] = Button(_("Close"))
-		self["key_green"] = Button(_("OK"))
-		self["key_yellow"] = Button(_("Show E2 Log"))
-		self["myactions"] = ActionMap(['ColorActions', 'OkCancelActions', 'DirectionActions'],
-									  {
-										  'cancel': self.closeRecursive,
-										  'green': self.closeRecursive,
-										  "red": self.closeRecursive,
-										  "yellow": self.changelogtype,
-										  "left": self.pageUp,
-										  "right": self.pageDown,
-										  "down": self.pageDown,
-										  "up": self.pageUp
-									  }, -1)
-		self.onLayoutFinish.append(self.getlog)
-
-	def changelogtype(self):
-		if self.logtype == 'oe':
-			self["key_yellow"].setText(_("Show OE Log"))
-			self.screentitle = _("Enigma2 Changes")
-			self.logtype = 'e2'
-		else:
-			self["key_yellow"].setText(_("Show E2 Log"))
-			self.screentitle = _("OE Changes")
-			self.logtype = 'oe'
-		self.getlog()
-
-	def pageUp(self):
-		self["text"].pageUp()
-
-	def pageDown(self):
-		self["text"].pageDown()
-
-	def getlog(self):
-		if config.usage.show_menupath.value == 'large':
-			if not self.menu_path.endswith(self.screentitle):
-				self.menu_path += self.screentitle
-			title = self.menu_path
-			self["menu_path_compressed"].setText("")
-		elif config.usage.show_menupath.value == 'small':
-			title = self.screentitle
-			self["menu_path_compressed"].setText(self.menu_path + " >" if not self.menu_path.endswith(' / ') else self.menu_path[:-3] + " >" or "")
-		else:
-			title = self.screentitle
-			self["menu_path_compressed"].setText("")
-		self.setTitle(title)
-
-		releasenotes = ""
-		fd = open('/etc/' + self.logtype + '-git.log', 'r')
-		for line in fd.readlines():
-			if getImageType() == 'release' and line.startswith('openvix: developer'):
-				continue
-			elif getImageType() == 'developer' and line.startswith('openvix: release'):
-				continue
-			releasenotes += line
-		fd.close()
-		self["text"].setText(releasenotes)
-		summarytext = releasenotes
-		try:
-			self['title_summary'].setText(summarytext[0] + ':')
-			self['text_summary'].setText(summarytext[1])
-		except:
-			self['title_summary'].setText("")
-			self['text_summary'].setText("")
-
-	def unattendedupdate(self):
-		self.close((_("Unattended upgrade without GUI and reboot system"), "cold"))
-
-	def closeRecursive(self):
-		self.close((_("Cancel"), ""))
-
 
 class TranslationInfo(Screen):
 	def __init__(self, session, menu_path=""):

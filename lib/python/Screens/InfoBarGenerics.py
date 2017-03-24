@@ -918,7 +918,7 @@ class InfoBarNumberZap:
 			elif len(self.servicelist.history) > 1:
 				self.checkTimeshiftRunning(self.recallPrevService)
 		else:
-			if self.has_key("TimeshiftActions") and self.timeshiftEnabled():
+			if "TimeshiftActions" in self and self.timeshiftEnabled():
 				ts = self.getTimeshift()
 				if ts and ts.isTimeshiftActive():
 					return
@@ -1488,7 +1488,7 @@ class InfoBarEPG:
 
 	def InfoPressed(self):
 		if isStandardInfoBar(self) or isMoviePlayerInfoBar(self):
-			if getBrandOEM() in ('formuler', 'skylake', 'xtrend', 'odin', 'ini', 'dags' ,'gigablue', 'xp', 'ceryon', 'broadmedia', 'gfutures', 'xcore'):
+			if getBrandOEM() in ('formuler', 'skylake', 'xtrend', 'odin', 'ini', 'dags' ,'gigablue', 'xp', 'ceryon', 'broadmedia', 'gfutures', 'xcore', 'octagon'):
 				self.openEventView()
 			else:
 				self.showDefaultEPG()
@@ -2514,13 +2514,12 @@ class InfoBarExtensions:
 
 	def updateExtension(self, extension, key = None):
 		self.extensionsList.append(extension)
-		if key is not None:
-			if self.extensionKeys.has_key(key):
-				key = None
+		if key is not None and key in self.extensionKeys:
+			key = None
 
 		if key is None:
 			for x in self.availableKeys:
-				if not self.extensionKeys.has_key(x):
+				if x not in self.extensionKeys:
 					key = x
 					break
 
@@ -2544,7 +2543,7 @@ class InfoBarExtensions:
 		keys = []
 		list = []
 		for x in self.availableKeys:
-			if self.extensionKeys.has_key(x):
+			if x in self.extensionKeys:
 				entry = self.extensionKeys[x]
 				extension = self.extensionsList[entry]
 				if extension[2]():
@@ -3520,14 +3519,14 @@ class InfoBarNotifications:
 			del notifications[0]
 			cb = n[0]
 
-			if n[3].has_key("onSessionOpenCallback"):
+			if "onSessionOpenCallback" in n[3]:
 				n[3]["onSessionOpenCallback"]()
 				del n[3]["onSessionOpenCallback"]
 
 			if cb:
 				dlg = self.session.openWithCallback(cb, n[1], *n[2], **n[3])
 			elif not Notifications.current_notifications and n[4] == "ZapError":
-				if n[3].has_key("timeout"):
+				if "timeout" in n[3]:
 					del n[3]["timeout"]
 				n[3]["enable_input"] = False
 				dlg = self.session.instantiateDialog(n[1], *n[2], **n[3])

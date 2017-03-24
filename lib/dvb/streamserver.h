@@ -10,6 +10,10 @@ class eStreamServer;
 
 class eStreamClient: public eDVBServiceStream
 {
+	private:
+	static void set_socket_option(int fd, int optid, int option);
+	static void set_tcp_option(int fd, int optid, int option);
+
 protected:
 	eStreamServer *parent;
 	int encoderFd;
@@ -26,10 +30,11 @@ protected:
 
 	std::string request;
 
-	void streamStopped();
-	void tuneFailed();
+	void streamStopped() { stopStream(); }
+	void tuneFailed() { stopStream(); }
 
 public:
+	void stopStream();
 	eStreamClient(eStreamServer *handler, int socket, const std::string remotehost);
 	~eStreamClient();
 
@@ -62,6 +67,8 @@ public:
 #endif
 
 	static eStreamServer *getInstance();
+	void stopStream();
+	bool stopStreamClient(const std::string remotehost, const std::string serviceref);
 	PyObject *getConnectedClients();
 };
 

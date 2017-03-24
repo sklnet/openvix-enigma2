@@ -116,20 +116,12 @@ int fontRenderClass::getFaceProperties(const std::string &face, FTC_FaceID &id, 
 	return -1;
 }
 
-#ifdef HAVE_FREETYPE2
-inline FT_Error fontRenderClass::getGlyphBitmap(FTC_Image_Desc *font, FT_UInt glyph_index, FTC_SBit *sbit)
-#else
-inline FT_Error fontRenderClass::getGlyphBitmap(FTC_Image_Desc *font, FT_ULong glyph_index, FTC_SBit *sbit)
-#endif
+inline FT_Error fontRenderClass::getGlyphBitmap(FTC_Image_Desc *font, GlyphIndex glyph_index, FTC_SBit *sbit)
 {
 	return FTC_SBit_Cache_Lookup(sbitsCache, font, glyph_index, sbit);
 }
 
-#ifdef HAVE_FREETYPE2
-inline FT_Error fontRenderClass::getGlyphImage(FTC_Image_Desc *font, FT_UInt glyph_index, FT_Glyph *glyph, FT_Glyph *borderglyph, int bordersize)
-#else
-inline FT_Error fontRenderClass::getGlyphImage(FTC_Image_Desc *font, FT_ULong glyph_index, FT_Glyph *glyph, FT_Glyph *borderglyph, int bordersize)
-#endif
+inline FT_Error fontRenderClass::getGlyphImage(FTC_Image_Desc *font, GlyphIndex glyph_index, FT_Glyph *glyph, FT_Glyph *borderglyph, int bordersize)
 {
 	FT_Glyph image;
 	FT_Error err = FTC_ImageCache_Lookup(imageCache, font, glyph_index, &image, NULL);
@@ -309,26 +301,18 @@ Font::Font(fontRenderClass *render, FTC_FaceID faceid, int isize, int tw, int re
 //	font.image_type |= ftc_image_flag_autohinted;
 }
 
-#ifdef HAVE_FREETYPE2
-inline FT_Error Font::getGlyphBitmap(FT_UInt glyph_index, FTC_SBit *sbit)
-#else
-inline FT_Error Font::getGlyphBitmap(FT_ULong glyph_index, FTC_SBit *sbit)
-#endif
+Font::~Font()
+{
+}
+
+inline FT_Error Font::getGlyphBitmap(GlyphIndex glyph_index, FTC_SBit *sbit)
 {
 	return renderer->getGlyphBitmap(&font, glyph_index, sbit);
 }
 
-#ifdef HAVE_FREETYPE2
-inline FT_Error Font::getGlyphImage(FT_UInt glyph_index, FT_Glyph *glyph, FT_Glyph *borderglyph, int bordersize)
-#else
-inline FT_Error Font::getGlyphImage(FT_ULong glyph_index, FT_Glyph *glyph, FT_Glyph *borderglyph, int bordersize)
-#endif
+inline FT_Error Font::getGlyphImage(GlyphIndex glyph_index, FT_Glyph *glyph, FT_Glyph *borderglyph, int bordersize)
 {
 	return renderer->getGlyphImage(&font, glyph_index, glyph, borderglyph, bordersize);
-}
-
-Font::~Font()
-{
 }
 
 DEFINE_REF(eTextPara);
@@ -724,17 +708,16 @@ int eTextPara::renderString(const char *string, int rflags, int border)
 	int size=uc_shape.size();
 	FriBidiCharType dir=FRIBIDI_TYPE_ON;
 	uc_visual.resize(size);
-//		// gaaanz lahm, aber anders geht das leider nicht, sorry.
-//	FriBidiChar array[size], target[size];
-// Works better in the data segment - remembering to free before return...
-	FriBidiChar *array = (FriBidiChar*)malloc(sizeof(FriBidiChar)*size);
-	if (size > 0 and array == NULL)
-		eFatal("[eTextPara] renderString: failed to get space for array");
-	FriBidiChar *target = (FriBidiChar*)malloc(sizeof(FriBidiChar)*size);
-	if (size > 0 and target == NULL)
-		eFatal("[eTextPara] renderString: failed to get space for target");
+		// gaaanz lahm, aber anders geht das leider nicht, sorry.
+	FriBidiChar *array = new FriBidiChar[size];
+	FriBidiChar *target = new FriBidiChar[size];
 	std::copy(uc_shape.begin(), uc_shape.end(), array);
-	fribidi_log2vis(array, size, &dir, target, 0, 0, 0);
+	if(!fribidi_log2vis(array, size, &dir, target, 0, 0, 0))
+	{
+		delete [] target;
+		delete [] array;
+		return -1;
+	}
 	uc_visual.assign(target, target+size);
 
 	glyphs.reserve(size);
@@ -875,10 +858,8 @@ nprint:				isprintable=0;
 		lineChars.push_back(charCount);
 		charCount=0;
 	}
-// Now free this space...
-	free(array);
-	free(target);
-
+	delete [] target;
+	delete [] array;
 	return 0;
 }
 

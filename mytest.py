@@ -8,6 +8,8 @@ if os.path.isfile("/usr/lib/enigma2/python/enigma.zip"):
 from Tools.Profile import profile, profile_final
 profile("PYTHON_START")
 
+# Don't remove this line. It may seem to do nothing, but if removed,
+# it will break output redirection for crash logs.
 import Tools.RedirectOutput
 from boxbranding import getBrandOEM, getImageVersion, getImageBuild, getImageDevBuild, getImageType
 print "[Image Type] %s" % getImageType()
@@ -140,7 +142,7 @@ def dump(dir, p = ""):
 			dump(val, p + "(dict)/" + entry)
 	if hasattr(dir, "__dict__"):
 		for name, value in dir.__dict__.items():
-			if not had.has_key(str(value)):
+			if str(value) not in had:
 				had[str(value)] = 1
 				dump(value, p + "/" + str(name))
 			else:
@@ -607,7 +609,7 @@ Components.SetupDevices.InitSetupDevices()
 
 profile("UserInterface")
 import Screens.UserInterfacePositioner
-Screens.UserInterfacePositioner.InitOsd3D()
+Screens.UserInterfacePositioner.InitOsd()
 
 profile("AVSwitch")
 import Components.AVSwitch
@@ -647,6 +649,10 @@ import Components.Lcd
 Components.Lcd.InitLcd()
 Components.Lcd.IconCheck()
 
+profile("UserInterface")
+import Screens.UserInterfacePositioner
+Screens.UserInterfacePositioner.InitOsdPosition()
+
 profile("EpgCacheSched")
 import Components.EpgLoadSave
 Components.EpgLoadSave.EpgCacheSaveCheck()
@@ -662,10 +668,6 @@ Screens.Ci.InitCiConfig()
 
 profile("RcModel")
 import Components.RcModel
-
-profile("UserInterface")
-import Screens.UserInterfacePositioner
-Screens.UserInterfacePositioner.InitOsd()
 
 #from enigma import dump_malloc_stats
 #t = eTimer()
