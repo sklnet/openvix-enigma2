@@ -2,7 +2,7 @@ from time import time, localtime, gmtime
 from os import path
 from fcntl import ioctl
 from struct import pack, unpack
-from boxbranding import getBrandOEM
+from os import path
 from Components.config import config
 
 def getFPVersion():
