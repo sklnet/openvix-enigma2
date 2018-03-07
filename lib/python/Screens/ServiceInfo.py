@@ -1,5 +1,3 @@
-from os import path
-from Components.HTMLComponent import HTMLComponent
 from Components.GUIComponent import GUIComponent
 from Screens.Screen import Screen
 from Components.ActionMap import ActionMap
@@ -7,8 +5,8 @@ from Components.Label import Label
 from Components.config import config
 from Components.Sources.StaticText import StaticText
 from ServiceReference import ServiceReference
-from enigma import eListboxPythonMultiContent, eListbox, gFont, iServiceInformation, eServiceCenter, getDesktop, RT_HALIGN_LEFT, RT_VALIGN_CENTER
-from Tools.Transponder import ConvertToHumanReadable, getChannelNumber, supportedChannels
+from enigma import eListboxPythonMultiContent, eListbox, gFont, iServiceInformation, eServiceCenter, RT_HALIGN_LEFT
+from Tools.Transponder import ConvertToHumanReadable, getChannelNumber
 import skin
 
 RT_HALIGN_LEFT = 0
@@ -64,7 +62,7 @@ def ServiceInfoListEntry(a, b="", valueType=TYPE_TEXT, param=4):
 			(eListboxPythonMultiContent.TYPE_TEXT, xa, ya, wa + wb, ha + hb, 0, RT_HALIGN_LEFT, a)
 		]
 
-class ServiceInfoList(HTMLComponent, GUIComponent):
+class ServiceInfoList(GUIComponent):
 	def __init__(self, source):
 		GUIComponent.__init__(self)
 		self.l = eListboxPythonMultiContent()
@@ -315,7 +313,7 @@ class ServiceInfo(Screen):
 					(_("Inversion"), "%s" % frontendData["inversion"], TYPE_TEXT))
 			elif frontendDataOrg["tuner_type"] == "DVB-T":
 				return (tuner,
-					(_("Frequency & Channel"), "%.3f MHz" % ((frontendData.get("frequency", 0) / 1000) / 1000.0) + " - " + frontendData["channel"], TYPE_TEXT),
+					(_("Frequency & Channel"), "%s - Ch. %s" % (frontendData.get("frequency", 0), getChannelNumber(frontendData["frequency"], frontendData["tuner_number"])), TYPE_TEXT),
 					(_("Inversion & Bandwidth"), "%s - %s" % (frontendData["inversion"], frontendData["bandwidth"]), TYPE_TEXT),
 					(_("Code R. LP-HP & Guard Int"), "%s - %s - %s" % (frontendData["code_rate_lp"], frontendData["code_rate_hp"], frontendData["guard_interval"]), TYPE_TEXT),
 					(_("Constellation & FFT mode"), "%s - %s" % (frontendData["constellation"], frontendData["transmission_mode"]), TYPE_TEXT),

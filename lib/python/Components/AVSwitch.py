@@ -64,7 +64,7 @@ class AVSwitch:
 	modes["Scart"] = ["PAL", "NTSC", "Multi"]
 	# modes["DVI-PC"] = ["PC"]
 
-	if about.getChipSetString() in ('5272s', '7251', '7251s', '7252', '7252s', '7366', '7376', '7444s'):
+	if about.getChipSetString() in ('5272s', '7251', '7251s', '7252', '7252s', '7366', '7376', '7444s', '72604'):
 		modes["HDMI"] = ["720p", "1080p", "2160p", "1080i", "576p", "576i", "480p", "480i"]
 		widescreen_modes = {"720p", "1080p", "2160p", "1080i"}
 	elif about.getChipSetString() in ('7241', '7356', '73565', '7358', '7362', '73625', '7424', '7425', '7552', '7111', '7162'):
@@ -75,7 +75,8 @@ class AVSwitch:
 		widescreen_modes = {"720p", "1080i"}
 
 	modes["YPbPr"] = modes["HDMI"]
-	if getBrandOEM() == 'vuplus' and getBoxType() not in ('vusolo4k', 'vuultimo4k', 'vuuno4k'):
+
+	if getBrandOEM() == 'vuplus' and getBoxType() not in ('vusolo4k', 'vuuno4k', 'vuuno4kse',  'vuzero4k', 'vuultimo4k'):
 		modes["Scart-YPbPr"] = modes["HDMI"]
 
 	# if "DVI-PC" in modes and not getModeList("DVI-PC"):
@@ -95,6 +96,7 @@ class AVSwitch:
 		'et4x00',
 		'formuler4turbo',
 		'gbquad4k',
+		'gbue4k',		
 		'gbx1',
 		'gbx3',
 		'iqonios300hd',
@@ -112,6 +114,7 @@ class AVSwitch:
 		'osmega',
 		'osmini',
 		'osminiplus',
+		'osnino',		
 		'sf128',
 		'sf138',
 		'sf4008',
@@ -129,8 +132,10 @@ class AVSwitch:
 		'tmtwin4k',
 		'uniboxhd1',
 		'vusolo2',
+		'vuzero4k',
 		'vusolo4k',
 		'vuuno4k',
+		'vuuno4kse',
 		'vuultimo4k',
 		'xp1000'
 	)
@@ -138,7 +143,8 @@ class AVSwitch:
 	# Machines that have composite video (yellow RCA socket) but do not have Scart.
 	yellow_RCA_no_scart = (
 		'formuler1',
-		'formuler1tc',		
+		'formuler1tc',
+		'formuler4turbo',
 		'gb800ueplus',		
 		'gbultraue',
 		'mbmicro',
@@ -167,17 +173,21 @@ class AVSwitch:
 		'et6x00',
 		'gbquad',
 		'gbquad4k',
+		'gbue4k',		
 		'gbx1',
 		'gbx3',
 		'ixussone',
 		'mutant51',
 		'mutant1500',
+		'osnino',		
 		'sf4008',
 		'tmnano2t',
 		'tmnanom3',
 		'tmtwin4k',
+		'vuzero4k',
 		'vusolo4k',
 		'vuuno4k',
+		'vuuno4kse',
 		'vuultimo4k'
 	)
 
@@ -593,7 +603,7 @@ def InitAVSwitch():
 				f.close()
 			except:
 				pass
-		if getBoxType() in ('vusolo4k','vuuno4k','vuultimo4k'):
+		if getBoxType() in ('vuzero4k','vusolo4k','vuuno4k','vuuno4kse','vuultimo4k'):
 			config.av.hdmicolorspace = ConfigSelection(choices={
 					"Edid(Auto)": _("Auto"),
 					"Hdmi_Rgb": _("RGB"),

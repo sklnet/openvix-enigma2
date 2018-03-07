@@ -52,7 +52,6 @@ from boxbranding import getBrandOEM, getMachineBuild
 
 from time import time, localtime, strftime
 from bisect import insort
-from sys import maxint
 
 import os, cPickle
 
@@ -60,6 +59,9 @@ import os, cPickle
 from Screens.Menu import MainMenu, Menu, mdom
 from Screens.Setup import Setup
 import Screens.Standby
+
+# sys.maxint on 64bit (2**63-1) fails with OverflowError on eActionMap.bindAction use 32bit value (2**31-1)
+maxint = 2147483647
 
 def isStandardInfoBar(self):
 	return self.__class__.__name__ == "InfoBar"
@@ -1489,7 +1491,7 @@ class InfoBarEPG:
 
 	def InfoPressed(self):
 		if isStandardInfoBar(self) or isMoviePlayerInfoBar(self):
-			if getBrandOEM() in ('formuler', 'skylake', 'xtrend', 'odin', 'ini', 'dags' ,'gigablue', 'xp', 'ceryon', 'broadmedia', 'gfutures', 'xcore', 'octagon'):
+			if SystemInfo['HasInfoButton']:
 				self.openEventView()
 			else:
 				self.showDefaultEPG()
@@ -2224,6 +2226,22 @@ class InfoBarSeek:
 		if not config.seek.baractivation.value == "leftright":
 			self.session.open(Seekbar, fwd)
 		else:
+			self.session.openWithCallback(self.rwdSeekTo, MinuteInput)
+
+	def seekFwdVod(self, fwd=True):
+		seekable = self.getSeek()
+		if seekable is None:
+			return
+		else:
+			if config.seek.baractivation.value == "leftright":
+				self.session.open(Seekbar, fwd)
+			else:
+				self.session.openWithCallback(self.fwdSeekTo, MinuteInput)
+
+	def seekFwdSeekbar(self, fwd=True):
+		if not config.seek.baractivation.value == "leftright":
+			self.session.open(Seekbar, fwd)
+		else:
 			self.session.openWithCallback(self.fwdSeekTo, MinuteInput)
 
 	def fwdSeekTo(self, minutes):
@@ -2236,8 +2254,8 @@ class InfoBarSeek:
 			self.session.openWithCallback(self.rwdSeekTo, MinuteInput)
 
 	def rwdSeekTo(self, minutes):
-#		print "[InfoBarGenerics] rwdSeekTo"
-		self.doSeekRelative(-minutes * 60 * 90000)
+#		print "rwdSeekTo"
+			self.doSeekRelative(-minutes * 60 * 90000)
 
 	def checkSkipShowHideLock(self):
 		if self.seekstate == self.SEEK_STATE_PLAY or self.seekstate == self.SEEK_STATE_EOF:

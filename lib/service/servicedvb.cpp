@@ -17,6 +17,7 @@
 #include <lib/dvb/tstools.h>
 #include <lib/python/python.h>
 #include <lib/base/nconfig.h> // access to python config
+#include <lib/base/httpsstream.h>
 #include <lib/base/httpstream.h>
 #include "servicepeer.h"
 
@@ -2812,6 +2813,12 @@ ePtr<iTsSource> eDVBServicePlay::createTsSource(eServiceReferenceDVB &ref, int p
 		f->open(ref.path.c_str());
 		return ePtr<iTsSource>(f);
 	}
+	else if (ref.path.substr(0, 8) == "https://")
+	{
+		eHttpsStream *f = new eHttpsStream();
+		f->open(ref.path.c_str());
+		return ePtr<iTsSource>(f);
+	}
 	else
 	{
 		eRawFile *f = new eRawFile(packetsize);
@@ -3254,8 +3261,8 @@ RESULT eDVBServicePlay::getCachedSubtitle(struct SubtitleTrack &track)
 		if (!h.getProgramInfo(program))
 		{
 			bool usecache = eConfigManager::getConfigBoolValue("config.autolanguage.subtitle_usecache");
-			int stream=program.defaultSubtitleStream;
-			int tmp = m_dvb_service->getCacheEntry(eDVBService::cSUBTITLE);
+			int stream = program.defaultSubtitleStream;
+			int tmp = usecache ? m_dvb_service->getCacheEntry(eDVBService::cSUBTITLE) : -1; 
 
 			if (usecache || stream == -1)
 			{

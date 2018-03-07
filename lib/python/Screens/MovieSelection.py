@@ -36,6 +36,7 @@ from enigma import eServiceReference, eServiceCenter, eTimer, eSize, iPlayableSe
 import os
 import time
 import cPickle as pickle
+from Components.SelectionList import SelectionList
 
 config.movielist = ConfigSubsection()
 config.movielist.curentlyplayingservice = ConfigText()
@@ -73,7 +74,6 @@ l_moviesort = [
 	(str(MovieList.SORT_ALPHANUMERIC_REVERSE), _("alphabetic reverse"), 'Z-A'),
 	(str(MovieList.SORT_ALPHAREV_DATE_NEWEST_FIRST), _("alpharev then newest"),  'Z1 A2 A1')]
 
-#GML:1
 # 4th item is the textual value set in UsageConfig.py
 l_trashsort = [
 	(str(MovieList.TRASHSORT_SHOWRECORD), _("delete time - show record time (Trash ONLY)"), '03/02/01', "show record time"),
@@ -84,7 +84,7 @@ try:
 except Exception as e:
 	print "[MovieSelection] Bluray Player is not installed:", e
 	BlurayPlayer = None
-	
+
 
 def defaultMoviePath():
 	result = config.usage.default_path.value
@@ -180,6 +180,32 @@ def moveServiceFiles(serviceref, dest, name=None, allowCopy=True):
 		# rethrow exception
 		raise
 
+# dest is not used here, but this needs to have the same calling
+# sequence as moveServiceFiles()
+# allowCopy isn't even used in moveServiceFiles, but....
+#
+def deleteServiceFiles(serviceref, dest, name=None, allowCopy=True):
+
+# Send a dummy_pathname to createMoveList - we just want the list...
+#
+	moveList = createMoveList(serviceref, "dummy_pathname")
+
+# This list is pairs of from/to names. We only want the froms.
+# And Tools.CopyFiles.deleteFiles() is a bit of a misnomer, as it only
+# expects to be given one pathname to delete, and that has to be a
+# directory!  >>Sigh<<
+#
+	for x in moveList:
+		f2delete = x[0]
+		try:
+			# print "[MovieSelection] Deleting in background..."
+			from enigma import eBackgroundFileEraser
+			eBackgroundFileEraser.getInstance().erase(f2delete)
+		except Exception, e:
+			print "[MovieSelection] Failed delete:", e
+			# rethrow exception
+			raise
+
 def copyServiceFiles(serviceref, dest, name=None):
 	# current should be 'ref' type, dest a simple path string
 	moveList = createMoveList(serviceref, dest)
@@ -238,8 +264,6 @@ class MovieBrowserConfiguration(ConfigListScreen,Screen):
 		self.cfg = cfg
 		cfg.moviesort = ConfigSelection(default=str(config.movielist.moviesort.value), choices = l_moviesort)
 		cfg.description = ConfigYesNo(default=(config.movielist.description.value != MovieList.HIDE_DESCRIPTION))
-#GML:2 - movielist_trashcan_days
-#GML:1 - trashsort_deltime
 		configList = [getConfigListEntry(_("Use trash can in movie list"), config.usage.movielist_trashcan, _("When enabled, deleted recordings are moved to the trash can, instead of being deleted immediately.")),
 					  getConfigListEntry(_("Remove items from trash can after (days)"), config.usage.movielist_trashcan_days, _("Configure the number of days after which items are automatically removed from the trash can.\nA setting of 0 disables this.")),
 					  getConfigListEntry(_("Clean network trash cans"), config.usage.movielist_trashcan_network_clean, _("When enabled, network trash cans are probed for cleaning.")),
@@ -256,7 +280,7 @@ class MovieBrowserConfiguration(ConfigListScreen,Screen):
 					  getConfigListEntry(_("Use individual settings for each directory"), config.movielist.settings_per_directory, _("When set, each directory will show the previous state used. When off, the default values will be shown.")),
 					  getConfigListEntry(_("Behavior when a movie reaches the end"), config.usage.on_movie_eof, _("On reaching the end of a file during playback, you can choose the box's behavior.")),
 					  getConfigListEntry(_("Stop service on return to movie list"), config.movielist.stop_service, _("Stop previous broadcasted service on return to movie list.")),
-					  getConfigListEntry(_("Show status icons in movie list"), config.usage.show_icons_in_movielist, _("Shows the watched status of the movie."))]		
+					  getConfigListEntry(_("Show status icons in movie list"), config.usage.show_icons_in_movielist, _("Shows the watched status of the movie."))]
 		if config.usage.show_icons_in_movielist.value:
 			configList.append(getConfigListEntry(_("Show icon for new/unseen items"), config.usage.movielist_unseen, _("Shows the icons when new/unseen, otherwise it will not show an icon.")))
 		configList.append(getConfigListEntry(_("Play audio in background"), config.movielist.play_audio_internal, _("Keeps the movie list open whilst playing audio files.")))
@@ -368,29 +392,21 @@ class MovieContextMenu(Screen, ProtectedScreen):
 		self.csel = csel
 		ProtectedScreen.__init__(self)
 
-		self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "NumberActions", "MenuActions"],
-			{
-				"red": self.cancelClick,
-				"green": self.okbuttonClick,
-				"ok": self.okbuttonClick,
-				"cancel": self.cancelClick,
-				"green": self.do_showDeviceMounts,
-				"yellow": self.do_showNetworkMounts,
-				"blue": self.do_selectSortby,
-				"menu": self.do_configure,
-				"1": self.do_addbookmark,
-				"2": self.do_createdir,
-				"3": self.do_delete,
-				"4": self.do_move,
-				"5": self.do_copy,
-				"6": self.do_rename,
-				"7": self.do_reset,
-				"8": self.do_decode,
-				"9": self.do_unhideParentalServices
-			})
+		m_actions = {
+ 			"red": self.cancelClick,
+			"ok": self.okbuttonClick,
+			"cancel": self.cancelClick,
+			"green": self.do_showDeviceMounts,
+			"yellow": self.do_showNetworkMounts,
+			"blue": self.do_selectSortby,
+			"menu": self.do_configure,
+			"0": self.do_showFileManager,
+			"1": self.do_addbookmark,
+			"2": self.do_createdir,
+			"3": self.do_delete,
+		}
 
 		self["key_red"] = StaticText(_("Cancel"))
-		self["key_green"] = StaticText(_("OK"))
 
 		def append_to_menu(menu, args, key=""):
 			menu.append(ChoiceEntryComponent(key, args))
@@ -400,10 +416,12 @@ class MovieContextMenu(Screen, ProtectedScreen):
 		append_to_menu(menu, (_("Device mounts") + "...", csel.showDeviceMounts), key="green")
 		append_to_menu(menu, (_("Network mounts") + "...", csel.showNetworkMounts), key="yellow")
 		append_to_menu(menu, (_("Sort by") + "...", csel.selectSortby), key="blue")
+		append_to_menu(menu, (_("File manager") + "   ", csel.showFileManager), key="0")
 		if csel.exist_bookmark():
-			append_to_menu(menu, (_("Remove bookmark"), csel.do_addbookmark), key="1")
+			btext=_("Remove bookmark")
 		else:
-			append_to_menu(menu, (_("Add bookmark"), csel.do_addbookmark), key="1")
+			btext=("Add bookmark")
+		append_to_menu(menu, (btext, csel.do_addbookmark), key="1")
 		append_to_menu(menu, (_("Create directory"), csel.do_createdir), key="2")
 
 		if service:
@@ -414,23 +432,30 @@ class MovieContextMenu(Screen, ProtectedScreen):
 				append_to_menu(menu, (_("Move"), csel.do_move), key="4")
 				append_to_menu(menu, (_("Copy"), csel.do_copy), key="5")
 				append_to_menu(menu, (_("Rename"), csel.do_rename), key="6")
+				m_actions["4"] = self.do_move
+				m_actions["5"] = self.do_copy
+				m_actions["6"] = self.do_rename
 				if not (service.flags & eServiceReference.mustDescent):
 					if self.isResetable():
 						append_to_menu(menu, (_("Reset playback position"), csel.do_reset), key="7")
+						m_actions["7"] = self.do_reset
 					if service.getPath().endswith('.ts'):
 						append_to_menu(menu, (_("Start offline decode"), csel.do_decode), key="8")
+						m_actions["8"] = self.do_decode
 				elif BlurayPlayer is None and csel.isBlurayFolderAndFile(service):
 					append_to_menu(menu, (_("Auto play blu-ray file"), csel.playBlurayFile))
 				if config.ParentalControl.hideBlacklist.value and config.ParentalControl.storeservicepin.value != "never":
 					from Components.ParentalControl import parentalControl
 					if not parentalControl.sessionPinCached:
 						append_to_menu(menu, (_("Unhide parental control services"), csel.unhideParentalServices), key="9")
+						m_actions["9"] = self.do_unhideParentalServices
 				# Plugins expect a valid selection, so only include them if we selected a non-dir
 				if not(service.flags & eServiceReference.mustDescent):
 					for p in plugins.getPlugins(PluginDescriptor.WHERE_MOVIELIST):
 						append_to_menu( menu, (p.description, boundFunction(p, session, service)), key="bullet")
 
 		self["config"] = ChoiceList(menu)
+		self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "NumberActions", "MenuActions"], m_actions)
 
 
 	def isProtected(self):
@@ -479,7 +504,9 @@ class MovieContextMenu(Screen, ProtectedScreen):
 		self.close(self.csel.do_reset())
 	def cancelClick(self):
 		self.close(None)
-
+	def do_showFileManager(self):
+		self.close(self.csel.showFileManager())
+	
 class SelectionEventInfo:
 	def __init__(self):
 		self["Service"] = ServiceEvent()
@@ -717,10 +744,7 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 				iPlayableService.evEOF: self.__evEOF,
 				#iPlayableService.evSOF: self.__evSOF,
 			})
-		if config.misc.remotecontrol_text_support.value:
-			self.onExecBegin.append(self.asciiOff)
-		else:
-			self.onExecBegin.append(self.asciiOn)
+		self.onExecBegin.append(self.asciiOn)
 		config.misc.standbyCounter.addNotifier(self.standbyCountChanged, initial_call=False)
 
 	def isProtected(self):
@@ -748,7 +772,7 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 			parentalControl.hideBlacklist()
 			self.reloadList()
 		elif answer is not None:
-			self.session.openWithCallback(self.close, MessageBox, _("The pin code you entered is wrong."), MessageBox.TYPE_ERROR)	
+			self.session.openWithCallback(self.close, MessageBox, _("The pin code you entered is wrong."), MessageBox.TYPE_ERROR)
 
 	def asciiOn(self):
 		rcinput = eRCInput.getInstance()
@@ -776,7 +800,8 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 				'sortdefault': _("Sort by default"),
 				'preview': _("Preview"),
 				'movieoff': _("On end of movie"),
-				'movieoff_menu': _("On end of movie (as menu)")
+				'movieoff_menu': _("On end of movie (as menu)"),
+				'showFileManager': _("File manager")
 			}
 			for p in plugins.getPlugins(PluginDescriptor.WHERE_MOVIELIST):
 				userDefinedActions['@' + p.name] = p.description
@@ -791,7 +816,7 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 			config.movielist.btn_yellow = ConfigSelection(default='bookmarks', choices=userDefinedActions)
 			config.movielist.btn_blue = ConfigSelection(default='sortby', choices=userDefinedActions)
 			config.movielist.btn_redlong = ConfigSelection(default='rename', choices=userDefinedActions)
-			config.movielist.btn_greenlong = ConfigSelection(default='copy', choices=userDefinedActions)
+			config.movielist.btn_greenlong = ConfigSelection(default='showFileManager', choices=userDefinedActions)
 			config.movielist.btn_yellowlong = ConfigSelection(default='tags', choices=userDefinedActions)
 			config.movielist.btn_bluelong = ConfigSelection(default='sortdefault', choices=userDefinedActions)
 			config.movielist.btn_radio = ConfigSelection(default='tags', choices=userDefinedActions)
@@ -1360,7 +1385,6 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 			action()
 
 	def saveLocalSettings(self):
-#GML:4
 		if not config.movielist.settings_per_directory.value:
 			return
 		try:
@@ -1423,7 +1447,6 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 		return needUpdate
 
 	def sortBy(self, newType):
-#GML:1
 		print '[MovieSelection] SORTBY:',newType
 		if newType < MovieList.TRASHSORT_SHOWRECORD:
 			self.settings["moviesort"] = newType
@@ -1487,6 +1510,9 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 			self.reloadList()
 			self.updateDescription()
 
+	def do_showFileManager(self):
+		self.session.open(MovieSelectionFileManagerList, self["list"])
+
 	def can_sortby(self, item):
 		return True
 
@@ -1502,7 +1528,6 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 				used = index
 			menu.append((_(x[1]), x[0], "%d" % index))
 			index += 1
-#GML:1
 		if MovieList.InTrashFolder:
 			for x in l_trashsort:
 				if x[3] == config.usage.trashsort_deltime.value:
@@ -1517,7 +1542,6 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 			index = MovieList.SORT_ALPHANUMERIC
 		elif index == MovieList.SORT_ALPHAREV_DATE_NEWEST_FIRST:
 			index = MovieList.SORT_ALPHANUMERIC_REVERSE
-#GML:1
 		elif (index == MovieList.TRASHSORT_SHOWRECORD) or (index == MovieList.TRASHSORT_SHOWDELETE):
 			index = MovieList.SORT_RECORDED
 		return index - 1
@@ -2224,6 +2248,9 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 		import NetworkSetup
 		self.session.open(NetworkSetup.NetworkMountsMenu)
 
+	def showFileManager(self):
+		self.session.open(MovieSelectionFileManagerList, self["list"])
+
 	def showDeviceMounts(self):
 		import Plugins.SystemPlugins.ViX.MountManager
 		self.session.open(Plugins.SystemPlugins.ViX.MountManager.VIXDevicesPanel)
@@ -2326,12 +2353,228 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 		for index, item in enumerate(self["list"]):
 			if item:
 				item = item[0]
-				path = item.getPath()
 				if not item.flags & eServiceReference.mustDescent:
-					ext = os.path.splitext(path)[1].lower()
-					if ext in IMAGE_EXTENSIONS:
-						continue
-					else:
+					ext = os.path.splitext(item.getPath())[1].lower()
+					if ext not in IMAGE_EXTENSIONS:
 						items.append(item)
 
 playlist = []
+
+# There seems to be no way to pass information on to the callback 
+# function of openWithCallback. So given that we will only ever have one
+# active at once well stuff it into a static, global location...
+#
+msfml_data = None
+msfml_path = None
+msfml_really_remove = False
+
+class MovieSelectionFileManagerList(Screen):
+	def __init__(self, session, list):
+		Screen.__init__(self, session)
+		self.session = session
+		self.mainList = list
+		self.setTitle(_("List of files"))
+
+		self.original_selectionpng = None
+		self.changePng()
+
+		self.list = SelectionList([])
+		index = 0
+		for i, record in enumerate(list):
+			if record:
+				item = record[0]
+				if not item.flags & eServiceReference.mustDescent:
+					info = record[1]
+					name = info and info.getName(item)
+					self.list.addSelection(name, item, index, False)
+					index += 1
+
+		self["config"] = self.list
+		self["description"] = Label()
+
+		self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "MovieSelectionActions"],
+			{
+				"cancel": self.exit,
+				"ok": self.list.toggleSelection,
+				"red": self.exit,
+				"green": self.selectAction,
+				"yellow": self.sortList,
+				"blue": self.list.toggleAllSelection,
+				"contextMenu": self.selectAction,
+			})
+
+		self["key_red"] = StaticText(_("Cancel"))
+		self["key_green"] = StaticText(_("Do"))
+		self["key_yellow"] = StaticText(_("Sort"))
+		self["key_blue"] = StaticText(_("Invert"))
+
+		self.sort = 0
+		self["description"].setText(_("Select files with 'OK' and then use 'Green' to choose desired operation"))
+
+		self["Service"] = ServiceEvent()
+		self["config"].onSelectionChanged.append(self.setService)
+		self.onShown.append(self.setService)
+
+	def setService(self):
+		item = self["config"].getCurrent()[0]
+		self["Service"].newService(item[1])
+
+	def changePng(self):
+		from Tools.Directories import SCOPE_CURRENT_SKIN
+		from Tools.LoadPixmap import LoadPixmap
+		if os.path.exists(resolveFilename(SCOPE_CURRENT_SKIN, "skin_default/icons/mark_select.png")):
+			self.original_selectionpng = Components.SelectionList.selectionpng
+			Components.SelectionList.selectionpng = LoadPixmap(cached=True, path=resolveFilename(SCOPE_CURRENT_SKIN, "skin_default/icons/mark_select.png"))
+
+	def sortList(self):
+		if self.sort == 0:	# reversed
+			self.list.sort(sortType=2, flag=True)
+			self.sort += 1
+		elif self.sort == 1:	# a-z
+			self.list.sort()
+			self.sort += 1
+		elif self.sort == 2:	# z-a
+			self.list.sort(flag=True)
+			self.sort += 1
+		else:			# default
+			self.list.sort(sortType=2)
+			self.sort = 0
+
+	def selectAction(self):
+		menu = [(_("Delete"), 3),
+		        (_("Copy to..."), 5),
+		        (_("Move to..."), 6),]
+		buttons = ["3", "5", "6"]
+		text = _("Select operation:")
+		self.session.openWithCallback(self.menuCallback, ChoiceBox, title=text, list=menu, keys=buttons)
+
+	def menuCallback(self, choice):
+		if choice is None:
+			return
+		if choice[1] == 3:
+			self.deleteSelected()
+		elif choice[1] == 5:
+			self.copySelected()
+		elif choice[1] == 6:
+			self.moveSelected()
+		else:
+			return
+
+	def deleteSelected(self):
+		global msfml_data, msfml_path, msfml_really_remove
+		msfml_data = self.list.getSelectionsList()
+		if len(msfml_data) == 0:
+			return
+		msfml_path = os.path.realpath(msfml_data[0][1].getPath())   # All are in the same location
+		if '.Trash' in msfml_path:                                  # Already in Trash...
+			query = _("Do you really want to permanently remove from the trash can ?")
+			msfml_really_remove = True
+		elif config.usage.movielist_trashcan.value:                 # Can move to Trash...
+			query = _("Do you really want to move to the trash can ?")
+			msfml_really_remove = False
+		else:
+                        query = _("Do you really want to delete ?")
+			msfml_really_remove = True
+		mbox=self.session.openWithCallback(self.doDeleteSelected, MessageBox, query);
+
+	def doDeleteSelected(self, confirmed):
+		global msfml_data, msfml_path, msfml_really_remove
+		if not confirmed:
+			return
+		try:
+			trash = Tools.Trashcan.createTrashFolder(msfml_path)
+			if msfml_really_remove: # Really delete everything....
+				func_call = deleteServiceFiles
+				func_text = "deleteServiceFiles"
+			else:                   # Just move to .Trash
+				func_call = moveServiceFiles
+				func_text = "moveServiceFiles"
+			for item in msfml_data:       # item ... (name, item, index, False)
+				func_call(item[1], trash, item[0])
+				self.list.removeSelection(item)
+				self.mainList.removeService(item[1])
+		except Exception, e:
+			self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
+
+	def copySelected(self):
+		self.selectMovieLocation(title=_("Select destination for copy selected files..."), callback=self.gotCopyMovieDest)
+
+	def gotCopyMovieDest(self, choice):
+		if not choice:
+			return
+		dest = os.path.normpath(choice)
+		data = self.list.getSelectionsList()
+		if len(data):
+			try:
+				for item in data:
+					# item ... (name, item, index, False)
+					copyServiceFiles(item[1], dest, item[0])
+					self.list.toggleItemSelection(item)
+			except Exception, e:
+				self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
+		else:
+			item = self["config"].getCurrent()[0]
+			try:
+				copyServiceFiles(item[1], dest, item[0])
+			except Exception, e:
+				self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
+
+	def moveSelected(self):
+		self.selectMovieLocation(title=_("Select destination for move selected files..."), callback=self.gotMoveMovieDest)
+
+	def gotMoveMovieDest(self, choice):
+		if not choice:
+			return
+		dest = os.path.normpath(choice)
+		data = self.list.getSelectionsList()
+		if len(data) == 0:
+			data = [self["config"].getCurrent()[0]]
+		try:
+			for item in data:
+				# item ... (name, service, index, False)
+				moveServiceFiles(item[1], dest, item[0])
+				self.list.removeSelection(item)
+				self.mainList.removeService(item[1])
+		except Exception, e:
+			self.session.open(MessageBox, str(e), MessageBox.TYPE_ERROR)
+
+	def exit(self):
+		if self.original_selectionpng:
+			Components.SelectionList.selectionpng = self.original_selectionpng
+		self.close()
+
+	def selectMovieLocation(self, title, callback):
+		bookmarks = [("("+_("Other")+"...)", None)]
+		buildMovieLocationList(bookmarks)
+		self.onMovieSelected = callback
+		self.movieSelectTitle = title
+		self.session.openWithCallback(self.gotMovieLocation, ChoiceBox, title=title, list=bookmarks)
+
+	def gotMovieLocation(self, choice):
+		if not choice:
+			# cancelled
+			self.onMovieSelected(None)
+			del self.onMovieSelected
+			return
+		if isinstance(choice, tuple):
+			if choice[1] is None:
+				# Display full browser, which returns string
+				self.session.openWithCallback(
+					self.gotMovieLocation,
+					MovieLocationBox,
+					self.movieSelectTitle,
+					config.movielist.last_videodir.value
+				)
+				return
+			choice = choice[1]
+		choice = os.path.normpath(choice)
+		self.rememberMovieLocation(choice)
+		self.onMovieSelected(choice)
+		del self.onMovieSelected
+
+	def rememberMovieLocation(self, where):
+		if where in last_selected_dest:
+			last_selected_dest.remove(where)
+		last_selected_dest.insert(0, where)
+		if len(last_selected_dest) > 5:
+			del last_selected_dest[-1]

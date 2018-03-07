@@ -39,6 +39,7 @@ private:
 
 	int m_dvr_busy;
 	int m_dvr_id;
+	int m_dvr_source_offset;
 	friend class eDVBSectionReader;
 	friend class eDVBPESReader;
 	friend class eDVBAudio;
@@ -113,7 +114,7 @@ protected:
 		unsigned char* buffer;
 		AsyncIO()
 		{
-			memset(&aio, 0, sizeof(struct aiocb));
+			memset(&aio, 0, sizeof(aiocb));
 			buffer = NULL;
 		}
 		int wait();
