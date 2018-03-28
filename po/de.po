@@ -2,8 +2,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: enigma2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-02-16 07:25+0000\n"
-"PO-Revision-Date: 2018-02-16 21:35+0100\n"
+"POT-Creation-Date: 2018-03-17 12:03+0000\n"
+"PO-Revision-Date: 2018-03-17 19:23+0100\n"
 "Last-Translator: Ralf Biedermann <ralf.biedermann@rbsoft.de>\n"
 "Language-Team: AndyBlacburn, j-ot&Trial\n"
 "Language: de\n"
@@ -1556,6 +1556,9 @@ msgstr "Zu Favoriten hinzufügen"
 msgid "Add to parental protection"
 msgstr "Jugendschutz aktivieren"
 
+msgid "Add to selection (starts with...)"
+msgstr "Füge zur Auswahl hinzu (starte mit...)"
+
 msgid "Add/Remove timer for current event"
 msgstr "Timer für aktuelle Sendung hinzufügen/entfernen"
 
@@ -2856,6 +2859,9 @@ msgstr "Kommunikation"
 msgid "Comoros"
 msgstr "Comoros"
 
+msgid "Compare case sensitive"
+msgstr "Vergleiche unter Beachtung der Groß-/Kleinschreibung"
+
 msgid "Complete"
 msgstr "Komplett"
 
@@ -3262,7 +3268,7 @@ msgid "Copy to bouquets"
 msgstr "In Favoritenliste kopieren"
 
 msgid "Copy to..."
-msgstr ""
+msgstr "Kopiere nach..."
 
 msgid "Copying files"
 msgstr "Dateien kopieren"
@@ -3766,9 +3772,6 @@ msgstr "Bestätige Löschvorgang"
 msgid "Delete EPG"
 msgstr "EPG löschen"
 
-msgid "Delete Password"
-msgstr "Lösche Passwort"
-
 msgid "Delete entry"
 msgstr "Eintrag löschen"
 
@@ -3936,6 +3939,9 @@ msgstr "EIT jetzt/demnächst in Infobar anzeigen."
 
 msgid "Djibouti"
 msgstr "Djibouti"
+
+msgid "Do"
+msgstr "mach hin"
 
 msgid "Do not center DVB subs on this service"
 msgstr "Auf diesem Kanal Untertitel nicht zentrieren"
@@ -4418,9 +4424,6 @@ msgstr "Enigma2 Skinauswahl"
 msgid "Enter PIN"
 msgstr "PIN-Code ändern"
 
-msgid "Enter a new password"
-msgstr "Neues Passwort eingeben"
-
 msgid "Enter if you are in the east or west hemisphere."
 msgstr "Gebe ein ob Du in der östlichen oder westlichen Hemisphere bist."
 
@@ -4489,9 +4492,6 @@ msgstr "Gebe die Oszillator-Frequenz für das High-Band an. Für diese Informati
 
 msgid "Enter your low band local oscillator frequency. For more information consult the spec sheet of your LNB."
 msgstr "Gebe die Oszillator-Frequenz für das Low-Band an. Für diese Information lese die Spezifikationen deines LNBs."
-
-msgid "Enter your password here:"
-msgstr "Passwort eingeben:"
 
 msgid "Entertainment"
 msgstr "Unterhaltung"
@@ -5815,9 +5815,6 @@ msgstr "Installiere Service"
 msgid "Instant record"
 msgstr "Sofortaufnahme"
 
-msgid "Instant record location"
-msgstr "Sofortaufnahme Verzeichnis"
-
 msgid "Instant recording location"
 msgstr "Pfad für Sofortaufnahme"
 
@@ -6313,6 +6310,9 @@ msgstr "Lord Howe Island"
 
 msgid "Lower Framerate save CPU Time"
 msgstr "Niedrigere Bildraten sparen CPU Zeit"
+
+msgid "Lower case"
+msgstr "Kleinschreibung"
 
 msgid "Luxembourg"
 msgstr "Luxemburg"
@@ -6883,11 +6883,11 @@ msgstr "Neu"
 msgid "New Caledonia"
 msgstr "New Caledonia"
 
-msgid "New Random Password"
-msgstr "Neues zufälliges Passwort"
-
 msgid "New Zealand"
 msgstr "New Zealand"
+
+msgid "New password"
+msgstr "Neues Passwort"
 
 msgid "New profile: "
 msgstr "Neues Profil: "
@@ -7173,17 +7173,13 @@ msgstr "Nichts"
 
 msgid ""
 "Nothing to scan!\n"
-"Please setup your tuner settings before starting a service scan."
-msgstr ""
-"Nichts zu suchen!\n"
-"Bitte den Tuner vor der Suche einstellen."
-
-msgid ""
-"Nothing to scan!\n"
 "Please setup your tuner settings before you start a service scan."
 msgstr ""
 "Nichts zu suchen!\n"
 "Bitte den Tuner vor der Suche einstellen."
+
+msgid "Nothing to scan! Setup your tuner and try again."
+msgstr "Nichts zu suchen! Bitte den Tuner vor der Suche einstellen."
 
 msgid "Nothing to upgrade"
 msgstr "Keine Aktualisierungen"
@@ -7251,6 +7247,10 @@ msgstr "Oman"
 
 msgid "On"
 msgstr "An"
+
+#, python-format
+msgid "On destination '%s' is %s free space only!"
+msgstr "Auf Ziel '%s' ist nur noch %s freier Speicher!"
 
 msgid "On end of movie"
 msgstr "Am Ende eines Films"
@@ -7350,6 +7350,9 @@ msgstr "OpenVpn"
 
 msgid "OpenVpn Setup"
 msgstr "OpenVPN Einstellungen"
+
+msgid "Options..."
+msgstr "Einstellungen..."
 
 msgid "Orbital position"
 msgstr "Orbitale Position"
@@ -7493,8 +7496,8 @@ msgstr "Passwort"
 msgid "Password (httpwd)"
 msgstr "Passwort (HTTPWD)"
 
-msgid "Password deleted sucessfully for the root user"
-msgstr "Passowrt vom root Benutzer erfolgreich gelöscht"
+msgid "Password changed"
+msgstr "Passwort geändert"
 
 msgid "Password setup"
 msgstr "Passwort Einstellungen"
@@ -8110,9 +8113,6 @@ msgstr "Drücke OK um eine CAID auszuwählen/abzuwählen."
 msgid "Press OK to set the MAC address."
 msgstr "OK drücken um die MAC-Adresse zu setzen."
 
-msgid "Press OK to start the scan"
-msgstr "Zum Starten der Suche OK drücken"
-
 msgid "Press OK to toggle the selection"
 msgstr "Drücke OK um die Auswahl umzuschalten"
 
@@ -8305,6 +8305,9 @@ msgstr "Senderliste Radio"
 
 msgid "Random"
 msgstr "Zufällig"
+
+msgid "Random password"
+msgstr "Neues zufälliges Passwort"
 
 #, python-format
 msgid "Rating defined by broadcaster - %d"
@@ -8544,6 +8547,9 @@ msgstr "Löschen beendet."
 
 msgid "Remove from parental protection"
 msgstr "Aus Jugendschutz entfernen"
+
+msgid "Remove from selection (starts with...)"
+msgstr "Entferne aus der Auswahl (starte mit...)"
 
 msgid "Remove items from trash can after (days)"
 msgstr "Lösche Mülleimer nach (Tagen)"
@@ -9181,8 +9187,14 @@ msgstr "Wähle Ziel für:"
 msgid "Select files for backup."
 msgstr "Wähle Dateien zum sichern."
 
-msgid "Select files with 'OK' or 'Green' then use 'Menu' to select operation"
-msgstr "Wähle Dateien mit 'OK' oder 'Grün' und dann benutze 'Menü' um die gewünschte Operation zu wählen"
+msgid ""
+"Select files with 'OK' and then use 'Green' to choose desired operation.\n"
+"Use 'CH+/-' select/unselect files via the keyboard.\n"
+"Use 'Menu' for settings."
+msgstr ""
+"Wähle Dateien mit 'OK' und dann benutze 'Grün' um die gewünschte Operation zu wählen.\n"
+"Benutze 'Kanal +/-' um Dateien mit einer Tastatur aus-/abzuwählen.\n"
+"Benutze 'Menü' für Einstellungen"
 
 msgid "Select files/folders to backup"
 msgstr "Wähle Dateien/Ordner für die Sicherung"
@@ -9328,6 +9340,10 @@ msgstr "Bitte wähle den Anbieter aus und bestätige mit OK, um die Suche zu sta
 msgid "Select your region. If not available change 'Country' to 'all' and select one of the default alternatives."
 msgstr "Wähle deine Region. Wenn nciht aufgeführt wehcsel das Land auf 'alle' und wähle eine der Standardalternativen."
 
+#, python-format
+msgid "Selected: %s"
+msgstr "Ausgewählt: %s"
+
 msgid "Selecting satellites 1 (USALS)"
 msgstr "Wähle Satelliten 1 (USALS)"
 
@@ -9472,9 +9488,6 @@ msgstr "Sender können in Favoriten gruppiert werden. Wenn aktiviert kann mehr a
 msgid "Set Framerate for MiniTV"
 msgstr "Setze Bildrate für MiniTV"
 
-msgid "Set Password"
-msgstr "Setze Passwort"
-
 msgid "Set as startup service"
 msgstr "Als Startsender benutzen"
 
@@ -9595,6 +9608,13 @@ msgstr "Setze Spannung und 22KHz"
 
 msgid "Sets the root directory of movie list, to remove the '..' from being shown in that folder."
 msgstr "Wähle die Basis der Aufnahmeliste um die \"..\" in der Ansicht zu unterdrücken."
+
+msgid ""
+"Setting a password is strongly advised if your STB is open to the internet.\n"
+"This is the case if you have in your router a port forwarded to the STB."
+msgstr ""
+"Ein Passwort wird dringend empfohlen wenn die Box für das Internet geöffnet wurde.\n"
+"Das ist der Fall wenn im Router Powerforwarding zur Box eingerichtet wurde."
 
 msgid "Settings"
 msgstr "Einstellungen"
@@ -10444,7 +10464,7 @@ msgid "Stop entry"
 msgstr "Wiedergabe anhalten"
 
 msgid "Stop play TV"
-msgstr ""
+msgstr "Stopp Fernsehen"
 
 msgid "Stop playing this movie?"
 msgstr "Wiedergabe beenden?"
@@ -10589,9 +10609,6 @@ msgstr "Untertitel"
 
 msgid "Subtitles settings"
 msgstr "Untertitel Einstellungen"
-
-msgid "Sucessfully changed the password for the root user to "
-msgstr "Änderung vom Passwort für root erfolgreich zu: "
 
 msgid "Sudan"
 msgstr "Sudan"
@@ -10967,6 +10984,9 @@ msgid ""
 msgstr ""
 "Das NetzwerkWizard Plugin ist nicht installiert!\n"
 "Bitte installiere es."
+
+msgid "The password can not be blank."
+msgstr "Das Passwort darf nicht leer sein"
 
 #, python-format
 msgid "The path %s already exists."
@@ -11378,9 +11398,6 @@ msgstr ""
 "Timerüberlappung in der timers.xml entdeckt!\n"
 "Bitte überprüfen!"
 
-msgid "Timer record location"
-msgstr "Timeraufnahme Verzeichnis"
-
 msgid "Timer recording location"
 msgstr "Timeraufnahme Verzeichnis"
 
@@ -11522,6 +11539,10 @@ msgstr "Insgesamt behandelte Klienten EMMs"
 
 msgid "Total memory:"
 msgstr "Speicher gesamt:"
+
+#, python-format
+msgid "Total size: %s"
+msgstr "Gesamtgröße: %s"
 
 msgid "Total swap:"
 msgstr "Swap gesamt:"
@@ -11709,11 +11730,8 @@ msgstr "Ukraine"
 msgid "Ukrainian"
 msgstr "Ukrainisch"
 
-msgid "Unable to change/reset the password for the root user"
-msgstr "Änderung vom Passwort von root nicht möglich"
-
-msgid "Unable to delete the password for the root user"
-msgstr "Löschung vom Passwort von root nicht möglich"
+msgid "Unable to change password"
+msgstr "Passwort konnte nicht geändert werden"
 
 msgid "Undefined"
 msgstr "Undefiniert"
@@ -11819,6 +11837,9 @@ msgstr "Uphops -"
 msgid "Uphops: "
 msgstr "Uphops: "
 
+msgid "Upper case"
+msgstr "Großschreibung"
+
 msgid "Uptime"
 msgstr "Laufzeit"
 
@@ -11878,6 +11899,9 @@ msgstr "Benutze Fast-Scan Sendernamen"
 
 msgid "Use fastscan channel numbering"
 msgstr "Benutze Fast-Scan Sendernummern"
+
+msgid "Use first 'x' filename's chars for virtual keyboard"
+msgstr "Benutze die ersten 'x' Buchstaben des Dateinamens für die virtuelle Tastatur"
 
 msgid "Use frequency or channel"
 msgstr "Benutze Frequenz oder Kanal"
@@ -14581,6 +14605,9 @@ msgstr "umgeschaltet"
 #~ msgid "Dayname Month-99"
 #~ msgstr "Tagesname Monat-99"
 
+#~ msgid "Delete Password"
+#~ msgstr "Lösche Passwort"
+
 #~ msgid "Device Information"
 #~ msgstr "Geräteinformation"
 
@@ -14680,6 +14707,9 @@ msgstr "umgeschaltet"
 #~ msgid "Enigma2 Changes"
 #~ msgstr "Enigma2 Änderungen"
 
+#~ msgid "Enter your password here:"
+#~ msgstr "Passwort eingeben:"
+
 #~ msgid "Error downloading the change log."
 #~ msgstr "Fehler beim herunterladen vom change.log"
 
@@ -14745,6 +14775,9 @@ msgstr "umgeschaltet"
 
 #~ msgid "Input channel name."
 #~ msgstr "Kanalname eingeben."
+
+#~ msgid "Instant record location"
+#~ msgstr "Sofortaufnahme Verzeichnis"
 
 #~ msgid "Link Quality:"
 #~ msgstr "Qualität vom Link:"
@@ -14857,6 +14890,9 @@ msgstr "umgeschaltet"
 #~ msgid "Parental control setup"
 #~ msgstr "Jugendschutz Einstellungen"
 
+#~ msgid "Password deleted sucessfully for the root user"
+#~ msgstr "Passowrt vom root Benutzer erfolgreich gelöscht"
+
 #~ msgid "Play in main window"
 #~ msgstr "Als Hauptbild wiedergeben"
 
@@ -14886,6 +14922,9 @@ msgstr "umgeschaltet"
 
 #~ msgid "Prepare another USB stick for image flashing"
 #~ msgstr "Weiteren USB-Stick zum Image-Flashen vorbereiten"
+
+#~ msgid "Press OK to start the scan"
+#~ msgstr "Zum Starten der Suche OK drücken"
 
 #~ msgid "Prev quad PiP channel"
 #~ msgstr "Vorheriger Quad PiP Kanal"
@@ -14995,6 +15034,9 @@ msgstr "umgeschaltet"
 #~ msgid "Subtitle settings"
 #~ msgstr "Untertitel Einstellungen"
 
+#~ msgid "Sucessfully changed the password for the root user to "
+#~ msgstr "Änderung vom Passwort für root erfolgreich zu: "
+
 #~ msgid ""
 #~ "System temperature: %s%sC\n"
 #~ "\n"
@@ -15060,6 +15102,9 @@ msgstr "umgeschaltet"
 #~ msgid "Timer overview"
 #~ msgstr "Timer Überblick"
 
+#~ msgid "Timer record location"
+#~ msgstr "Timeraufnahme Verzeichnis"
+
 #~ msgid "Timeshift settings"
 #~ msgstr "TimeShift Einstellungen"
 
@@ -15082,6 +15127,12 @@ msgstr "umgeschaltet"
 
 #~ msgid "USB stick wizard"
 #~ msgstr "USB-Stick-Assistent"
+
+#~ msgid "Unable to change/reset the password for the root user"
+#~ msgstr "Änderung vom Passwort von root nicht möglich"
+
+#~ msgid "Unable to delete the password for the root user"
+#~ msgstr "Löschung vom Passwort von root nicht möglich"
 
 #~ msgid "Unattended upgrade without GUI and reboot system"
 #~ msgstr "Stille Aktualisierung ohne Benutzeroberfläche (automatischer Neustart)"
