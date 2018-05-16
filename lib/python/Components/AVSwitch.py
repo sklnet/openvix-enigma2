@@ -96,9 +96,11 @@ class AVSwitch:
 		'et4x00',
 		'formuler4turbo',
 		'gbquad4k',
-		'gbue4k',		
+		'gbue4k',
 		'gbx1',
+		'gbx2',		
 		'gbx3',
+		'gbx3h',
 		'iqonios300hd',
 		'ixusszero',
 		'mbmicro',
@@ -114,7 +116,7 @@ class AVSwitch:
 		'osmega',
 		'osmini',
 		'osminiplus',
-		'osnino',		
+		'osnino',
 		'sf128',
 		'sf138',
 		'sf4008',
@@ -145,7 +147,7 @@ class AVSwitch:
 		'formuler1',
 		'formuler1tc',
 		'formuler4turbo',
-		'gb800ueplus',		
+		'gb800ueplus',
 		'gbultraue',
 		'mbmicro',
 		'mbmicrov2',
@@ -173,13 +175,15 @@ class AVSwitch:
 		'et6x00',
 		'gbquad',
 		'gbquad4k',
-		'gbue4k',		
+		'gbue4k',
 		'gbx1',
+		'gbx2',		
 		'gbx3',
+		'gbx3h',
 		'ixussone',
 		'mutant51',
 		'mutant1500',
-		'osnino',		
+		'osnino',
 		'sf4008',
 		'tmnano2t',
 		'tmnanom3',
@@ -477,7 +481,7 @@ def InitAVSwitch():
 	config.av.autores_1080p24 = ConfigSelection(choices={"1080p24": _("1080p 24Hz"), "1080p25": _("1080p 25Hz")}, default="1080p24")
 	config.av.autores_1080p25 = ConfigSelection(choices={"1080p25": _("1080p 25Hz"), "1080p50": _("1080p 50Hz")}, default="1080p25")
 	config.av.autores_1080p30 = ConfigSelection(choices={"1080p30": _("1080p 30Hz"), "1080p60": _("1080p 60Hz")}, default="1080p30")
-	config.av.autores_2160p24 = ConfigSelection(choices={"2160p24": _("2160p 24Hz"), "2160p25": _("2160p 25Hz")}, default="2160p24")
+	config.av.autores_2160p24 = ConfigSelection(choices={"2160p24": _("2160p 24Hz"), "2160p25": _("2160p 25Hz"), "2160p30": _("2160p 30Hz")}, default="2160p24")
 	config.av.autores_2160p25 = ConfigSelection(choices={"2160p25": _("2160p 25Hz"), "2160p50": _("2160p 50Hz")}, default="2160p25")
 	config.av.autores_2160p30 = ConfigSelection(choices={"2160p30": _("2160p 30Hz"), "2160p60": _("2160p 60Hz")}, default="2160p30")
 	config.av.colorformat = ConfigSelection(choices=colorformat_choices, default="rgb")
