@@ -247,7 +247,7 @@ int eDVBVideo::m_close_invalidates_attributes = -1;
 
 eDVBVideo::eDVBVideo(eDVBDemux *demux, int dev)
 	: m_demux(demux), m_dev(dev),
-	m_width(-1), m_height(-1), m_framerate(-1), m_aspect(-1), m_progressive(-1)
+	m_width(-1), m_height(-1), m_framerate(-1), m_aspect(-1), m_progressive(-1), m_gamma(-1)
 {
 	char filename[128];
 	sprintf(filename, "/dev/dvb/adapter%d/video%d", demux ? demux->adapter : 0, dev);
@@ -562,6 +562,21 @@ void eDVBVideo::video_event(int)
 				eDebugNoNewLine("PROGRESSIVE_CHANGED %d\n", m_progressive);
 				/* emit */ m_event(event);
 			}
+			else if (evt.type == 17 /*VIDEO_EVENT_GAMMA_CHANGED*/)
+			{
+				struct iTSMPEGDecoder::videoEvent event;
+				event.type = iTSMPEGDecoder::videoEvent::eventGammaChanged;
+				/*
+				 * Possible gamma values
+				 * 0: Traditional gamma - SDR luminance range
+				 * 1: Traditional gamma - HDR luminance range
+				 * 2: SMPTE ST2084 (aka HDR10)
+				 * 3: Hybrid Log-gamma
+				 */
+				m_gamma = event.gamma = evt.u.frame_rate;
+				eDebugNoNewLine("GAMMA_CHANGED %d\n", m_gamma);
+				/* emit */ m_event(event);
+			}
 			else
 				eDebugNoNewLine("unhandled DVBAPI Video Event %d\n", evt.type);
 		}
@@ -649,6 +664,21 @@ int eDVBVideo::getFrameRate()
 		}
 	}
 	return m_framerate;
+}
+
+int eDVBVideo::getGamma()
+{
+	/* when closing the video device invalidates the attributes, we can rely on VIDEO_EVENTs */
+	if (!m_close_invalidates_attributes)
+	{
+		if (m_gamma == -1)
+		{
+			char tmp[64];
+			sprintf(tmp, "/proc/stb/vmpeg/%d/gamma", m_dev);
+			CFile::parseIntHex(&m_gamma, tmp);
+		}
+	}
+	return m_gamma;
 }
 
 DEFINE_REF(eDVBPCR);
@@ -1243,6 +1273,10 @@ RESULT eTSMPEGDecoder::showSinglePic(const char *filename)
 			struct stat s;
 			fstat(f, &s);
 #if defined(__sh__) // our driver has a different behaviour for iframes
+                        if (m_video_clip_fd >= 0)
+                                finishShowSinglePic();
+#endif
+#if HAVE_HISILICON
 			if (m_video_clip_fd >= 0)
 				finishShowSinglePic();
 #endif
@@ -1263,9 +1297,13 @@ RESULT eTSMPEGDecoder::showSinglePic(const char *filename)
 					streamtype = VIDEO_STREAMTYPE_MPEG4_H264;
 				else
 					streamtype = VIDEO_STREAMTYPE_MPEG2;
-
+#if HAVE_HISILICON
+				if (ioctl(m_video_clip_fd, VIDEO_SELECT_SOURCE, 0xff) < 0)
+					eDebug("[eTSMPEGDecoder] VIDEO_SELECT_SOURCE MEMORY failed: %m");
+#else
 				if (ioctl(m_video_clip_fd, VIDEO_SELECT_SOURCE, VIDEO_SOURCE_MEMORY) < 0)
 					eDebug("[eTSMPEGDecoder] VIDEO_SELECT_SOURCE MEMORY failed: %m");
+#endif
 #if not defined(__sh__)
 				if (ioctl(m_video_clip_fd, VIDEO_SET_STREAMTYPE, streamtype) < 0)
 					eDebug("[eTSMPEGDecoder] VIDEO_SET_STREAMTYPE failed: %m");
@@ -1287,7 +1325,11 @@ RESULT eTSMPEGDecoder::showSinglePic(const char *filename)
 					write(m_video_clip_fd, seq_end, sizeof(seq_end));
 				writeAll(m_video_clip_fd, stuffing, 8192);
 #if not defined(__sh__)
+#if HAVE_HISILICON
+				;
+#else
 				m_showSinglePicTimer->start(150, true);
+#endif
 #endif
 			}
 			close(f);
@@ -1362,5 +1404,12 @@ int eTSMPEGDecoder::getVideoAspect()
 {
 	if (m_video)
 		return m_video->getAspect();
+	return -1;
+}
+
+int eTSMPEGDecoder::getVideoGamma()
+{
+	if (m_video)
+		return m_video->getGamma();
 	return -1;
 }

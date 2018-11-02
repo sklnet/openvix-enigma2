@@ -11,10 +11,12 @@ from Components.ScrollLabel import ScrollLabel
 from Components.Console import Console
 from Components.config import config
 from enigma import eTimer, getEnigmaVersionString, getDesktop
-from boxbranding import getMachineBrand, getMachineName, getImageVersion, getImageType, getImageBuild, getDriverDate, getImageDevBuild
+from boxbranding import getMachineBrand, getMachineBuild, getMachineName, getImageVersion, getImageType, getImageBuild, getDriverDate, getImageDevBuild
 from Components.Pixmap import MultiPixmap
 from Components.Network import iNetwork
+from Components.SystemInfo import SystemInfo
 from Tools.StbHardware import getFPVersion
+from Tools.Multiboot import GetCurrentImage, GetCurrentImageMode
 from os import path
 from re import search
 import skin
@@ -71,8 +73,10 @@ class About(Screen):
 		AboutText += _("Model:\t%s %s\n") % (getMachineBrand(), getMachineName())
 
 		if about.getChipSetString() != _("unavailable"):
-			if about.getIsBroadcom():
-				AboutText += _("Chipset:\tBCM%s\n") % about.getChipSetString().upper()
+			if SystemInfo["HasHiSi"]:
+				AboutText += _("Chipset:\tHiSilicon %s\n") % about.getChipSetString().upper()
+			elif about.getIsBroadcom():
+				AboutText += _("Chipset:\tBroadcom %s\n") % about.getChipSetString().upper()
 			else:
 				AboutText += _("Chipset:\t%s\n") % about.getChipSetString().upper()
 
@@ -81,6 +85,27 @@ class About(Screen):
 		if getImageType() != 'release':
 			imageSubBuild = ".%s" % getImageDevBuild()
 		AboutText += _("Image:\t%s.%s%s (%s)\n") % (getImageVersion(), getImageBuild(), imageSubBuild, getImageType().title())
+
+		if SystemInfo["canMultiBoot"]:
+			image = GetCurrentImage()
+			bootmode = ""
+			part = ""
+			if SystemInfo["canMode12"]:
+				bootmode = "bootmode = %s" %GetCurrentImageMode()
+			if SystemInfo["HasHiSi"]:
+				if image != 0:
+					part = "%s%s" %(SystemInfo["canMultiBoot"][2], image*2)
+					image += 1
+				else:
+					part = "MMC"
+					image += 1
+			AboutText += _("Image Slot:\t%s") % "STARTUP_" + str(image) + " " + part + " " + bootmode + "\n"
+
+		if getMachineName() in ('ET8500') and path.exists('/proc/mtd'):
+			self.dualboot = self.dualBoot()
+			if self.dualboot:
+				AboutText += _("ET8500 Multiboot: Installed\n")
+			
 		skinWidth = getDesktop(0).size().width()
 		skinHeight = getDesktop(0).size().height()
 
@@ -128,7 +153,12 @@ class About(Screen):
 				f.close()
 			except:
 				tempinfo = ""
-		if tempinfo and int(tempinfo.replace('\n', '')) > 0:
+		elif path.exists('/proc/hisi/msp/pm_cpu'):
+			try:
+				tempinfo = search('temperature = (\d+) degree', open("/proc/hisi/msp/pm_cpu").read()).group(1)
+			except:
+				tempinfo = ""
+		if tempinfo and int(tempinfo) > 0:
 			mark = str('\xc2\xb0')
 			AboutText += _("Processor temp:\t%s") % tempinfo.replace('\n', '').replace(' ','') + mark + "C\n"
 		AboutLcdText = AboutText.replace('\t', ' ')

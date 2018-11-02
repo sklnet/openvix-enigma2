@@ -114,10 +114,10 @@ def SetIconDisplay(nrec):
 	return
 
 # Define a function that is called at the start and stop of all
-# recordings. This allows us to track the number of actual recorings.
-# Other recording-related accouting codul also be added here.
+# recordings. This allows us to track the number of actual recordings.
+# Other recording-related accounting could also be added here.
 # alter is 1 at a recording start, -1 at a stop and 0 as enigma2 starts
-# 9to initialzie things).
+# (to initialize things).
 
 
 def RecordingsState(alter):
@@ -432,6 +432,12 @@ class RecordTimerEntry(timer.TimerEntry, object):
 			ChannelSelectionInstance.addToHistory(self.service_ref.ref)
 		NavigationInstance.instance.playService(self.service_ref.ref)
 
+	# Report the tuner that the current recording is using
+	def log_tuner(self, level, state):
+		feinfo = self.record_service and hasattr(self.record_service, "frontendInfo") and self.record_service.frontendInfo()
+		fedata = feinfo and hasattr(feinfo, "getFrontendData") and feinfo.getFrontendData()
+		tuner_info = fedata and "tuner_number" in fedata and chr(ord('A') + fedata.get("tuner_number")) or "(fallback) stream"
+		self.log(level, "%s recording on tuner: %s" % (state, tuner_info))
 
 	def activate(self):
 		next_state = self.state + 1
@@ -478,7 +484,7 @@ class RecordTimerEntry(timer.TimerEntry, object):
 				if not self.justplay:
 					open(self.Filename + self.record_service.getFilenameExtension(), "w").close()
 					# Give the Trashcan a chance to clean up
-					# Need try/except as Trashcan.instance may not exist 
+					# Need try/except as Trashcan.instance may not exist
 					# for a missed recording started at boot-time.
 					try:
 						Trashcan.instance.cleanIfIdle()
@@ -586,7 +592,7 @@ class RecordTimerEntry(timer.TimerEntry, object):
 #
 						from Screens.InfoBar import MoviePlayer
 						if MoviePlayer.instance is not None:
-# This is one of the more wierdly named functions, it actually
+# This is one of the more weirdly named functions, it actually
 # functions as setMoviePlayerInactive
 							NavigationInstance.instance.isMovieplayerActive()
 # Since next_state is StateRunning we set self.begin
@@ -595,25 +601,25 @@ class RecordTimerEntry(timer.TimerEntry, object):
 						self._bouquet_search()
 				return True
 			else:
-				self.log(11, "start recording")
 				record_res = self.record_service.start()
 				self.setRecordingPreferredTuner(setdefault=True)
 				if record_res:
-					self.log(13, "start record returned %d" % record_res)
+					self.log(13, "start recording error: %d" % record_res)
 					self.do_backoff()
 					# retry
 					self.begin = time() + self.backoff
 					return False
+				self.log_tuner(11, "start")
 				return True
 
 		elif next_state == self.StateEnded or next_state == self.StateFailed:
 			old_end = self.end
 			self.ts_dialog = None
 			if self.setAutoincreaseEnd():
-				self.log(12, "autoincrase recording %d minute(s)" % int((self.end - old_end)/60))
+				self.log(12, "autoincrease recording %d minute(s)" % int((self.end - old_end)/60))
 				self.state -= 1
 				return True
-			self.log(12, "stop recording")
+			self.log_tuner(12, "stop")
 			RecordingsState(-1)
 			if not self.justplay:
 				if self.record_service:
@@ -642,7 +648,7 @@ class RecordTimerEntry(timer.TimerEntry, object):
 				self.keypress() #this unbinds the keypress detection
 				if not Screens.Standby.inStandby: # not already in standby
 					Notifications.AddNotificationWithCallback(self.sendStandbyNotification, MessageBox, _("A finished record timer wants to set your\n%s %s to standby. Do that now?") % (getMachineBrand(), getMachineName()), timeout = 180)
-			elif self.afterEvent == AFTEREVENT.DEEPSTANDBY or (wasRecTimerWakeup and self.afterEvent == AFTEREVENT.AUTO):
+			elif self.afterEvent == AFTEREVENT.DEEPSTANDBY or (wasRecTimerWakeup and self.afterEvent == AFTEREVENT.AUTO and Screens.Standby.inStandby):
 				if (abs(NavigationInstance.instance.RecordTimer.getNextRecordingTime() - time()) <= 900 or abs(NavigationInstance.instance.RecordTimer.getNextZapTime() - time()) <= 900) or NavigationInstance.instance.RecordTimer.getStillRecording():
 					print '[RecordTimer] Recording or Recording due is next 15 mins, not return to deepstandby'
 					return True
@@ -1164,6 +1170,10 @@ class RecordTimer(timer.Timer):
 		elif timersanitycheck.doubleCheck():
 			print "[RecordTimer] ignore double timer..."
 			return None
+		elif not loadtimer and not entry.disabled and not entry.justplay and not (entry.service_ref and '%3a//' in entry.service_ref.ref.toString()):
+			for x in check_timer_list:
+				if x.begin == entry.begin and not x.disabled and not x.justplay and not (x.service_ref and '%3a//' in x.service_ref.ref.toString()):
+					entry.begin += 1
 		entry.conflict_detection = real_cd
 		entry.timeChanged()
 		print "[Timer] Record " + str(entry)

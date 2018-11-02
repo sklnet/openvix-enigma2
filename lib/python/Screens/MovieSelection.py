@@ -68,6 +68,8 @@ l_moviesort = [
 	(str(MovieList.SORT_ALPHANUMERIC), _("alphabetic"), 'A-Z'),
 	(str(MovieList.SORT_ALPHA_DATE_OLDEST_FIRST), _("alpha then oldest"), 'A1 A2 Z1'),
 	(str(MovieList.SORT_ALPHANUMERIC_FLAT_REVERSE), _("flat alphabetic reverse"), 'Z-A Flat'),
+	(str(MovieList.SORT_LONGEST), _("longest"), 'long-short'),
+	(str(MovieList.SORT_SHORTEST), _("shortest"), 'short-long'),
 	(str(MovieList.SHUFFLE), _("shuffle"), '?'),
 	(str(MovieList.SORT_ALPHANUMERIC_FLAT), _("flat alphabetic"), 'A-Z Flat'),
 	(str(MovieList.SORT_RECORDED_REVERSE), _("reverse by date"), '01/02/03'),
@@ -357,6 +359,7 @@ class MovieContextMenu(Screen, ProtectedScreen):
 
 		self.csel = csel
 		ProtectedScreen.__init__(self)
+		self.title = _("Movielist menu")
 
 		self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "NumberActions", "MenuActions"],
 			{
@@ -388,8 +391,6 @@ class MovieContextMenu(Screen, ProtectedScreen):
 		append_to_menu(menu, (_("Device mounts") + "...", csel.showDeviceMounts), key="green")
 		append_to_menu(menu, (_("Network mounts") + "...", csel.showNetworkMounts), key="yellow")
 		append_to_menu(menu, (_("Sort by") + "...", csel.selectSortby), key="blue")
-		if csel.installedMovieManagerPlugin():
-			append_to_menu(menu, (_("Movie manager") + "...", csel.do_moviemanager))
 		if csel.exist_bookmark():
 			append_to_menu(menu, (_("Remove bookmark"), csel.do_addbookmark), key="1")
 		else:
@@ -765,8 +766,6 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 				'movieoff': _("On end of movie"),
 				'movieoff_menu': _("On end of movie (as menu)")
 			}
-			if self.installedMovieManagerPlugin():
-				userDefinedActions['moviemanager'] = _("Movie manager")
 			for p in plugins.getPlugins(PluginDescriptor.WHERE_MOVIELIST):
 				userDefinedActions['@' + p.name] = p.description
 			locations = []
@@ -1121,6 +1120,14 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 		except Exception, e:
 			print "[MovieSelection] DVD Player not installed:", e
 
+	def playSuburi(self, path):
+		suburi = os.path.splitext(path)[0][:-7]
+		for ext in AUDIO_EXTENSIONS:
+			if os.path.exists("%s%s" % (suburi, ext)):
+				current = eServiceReference(4097, 0, "file://%s&suburi=file://%s%s" % (path, suburi, ext))
+				self.close(current)
+				return True
+
 	def __serviceStarted(self):
 		if not self.list.playInBackground or not self.list.playInForeground:
 			return
@@ -1329,6 +1336,9 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 					return
 			elif ext in DVD_EXTENSIONS:
 				if self.playAsDVD(path):
+					return
+			elif "_suburi." in path:
+				if self.playSuburi(path):
 					return
 			self.movieSelected()
 
@@ -2214,19 +2224,6 @@ class MovieSelection(Screen, HelpableScreen, SelectionEventInfo, InfoBarBase, Pr
 	def showDeviceMounts(self):
 		import Plugins.SystemPlugins.ViX.MountManager
 		self.session.open(Plugins.SystemPlugins.ViX.MountManager.VIXDevicesPanel)
-
-	def can_moviemanager(self, item):
-		return True
-	def do_moviemanager(self):
-		item = self.getCurrentSelection()[0]
-		from Plugins.Extensions.MovieManager.ui import MovieManager
-		self.session.open(MovieManager, self["list"], item)
-	def installedMovieManagerPlugin(self):
-		try:
-			from Plugins.Extensions.MovieManager.ui import MovieManager
-			return True
-		except Exception as e:
-			return False
 
 	def showActionFeedback(self, text):
 		if self.feedbackTimer is None:
